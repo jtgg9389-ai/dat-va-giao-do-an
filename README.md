@@ -52,4 +52,4 @@ Ràng buộc nghiệp vụ:
 Một đơn hàng chỉ được gán cho 1 tài xế tại một thời điểm
 Trạng thái đơn chỉ được chuyển theo đúng luồng đã định nghĩa (không nhảy cóc trạng thái)
 Đối soát chỉ tính trên các đơn đã ở trạng thái COMPLETED
-Giới hạn đồ án (nên ghi rõ để thầy cô hiểu phạm vi): không tích hợp cổng thanh toán thật (dùng giả lập), dùng OpenStreetMap/Leaflet thay vì Google Maps trả phí, không triển khai app mobile thật (có thể làm web responsive giả lập)
+Giới hạn đồ án : không tích hợp cổng thanh toán thật (dùng giả lập), dùng OpenStreetMap/Leaflet thay vì Google Maps trả phí, không triển khai app mobile thật (có thể làm web responsive giả lập)
