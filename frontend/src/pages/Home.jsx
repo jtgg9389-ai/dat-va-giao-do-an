@@ -1,4 +1,4 @@
-import { Navigate } from 'react-router-dom';
+import { Navigate, Link } from 'react-router-dom';
 import './Home.css';
 
 const roleContent = {
@@ -65,26 +65,32 @@ function Home() {
 
       {/* Action cards */}
       <div className="home-actions">
-        <a href="/profile" className="action-card">
+        <Link to="/profile" className="action-card">
           <div className="action-emoji">👤</div>
           <div className="action-title">Thông tin cá nhân</div>
           <div className="action-desc">Xem và chỉnh sửa thông tin tài khoản của bạn.</div>
-        </a>
-
+        </Link>
+                {user.role !== 'admin' && (
+          <Link to="/support" className="action-card">
+            <div className="action-emoji">💬</div>
+            <div className="action-title">Hỗ trợ và phản hồi</div>
+            <div className="action-desc">Gửi khiếu nại, góp ý và theo dõi phản hồi từ quản trị viên.</div>
+          </Link>
+        )}
         {user.role === 'admin' && (
-          <a href="/admin" className="action-card">
+          <Link to="/admin" className="action-card">
             <div className="action-emoji">🛠️</div>
             <div className="action-title">Quản lý người dùng</div>
             <div className="action-desc">Xem danh sách, phân quyền và quản lý tài khoản.</div>
-          </a>
+          </Link>
         )}
 
         {user.role === 'restaurant' && (
-          <div className="action-card disabled">
+          <Link to="/restaurant" className="action-card">
             <div className="action-emoji">📋</div>
-            <div className="action-title">Quản lý thực đơn</div>
-            <div className="action-status">Sắp ra mắt</div>
-          </div>
+            <div className="action-title">Quản lý nhà hàng</div>
+            <div className="action-desc">Cập nhật thông tin quán và thực đơn của bạn.</div>
+          </Link>
         )}
 
         {user.role === 'driver' && (
@@ -96,11 +102,11 @@ function Home() {
         )}
 
         {user.role === 'customer' && (
-          <div className="action-card disabled">
+          <Link to="/restaurants" className="action-card">
             <div className="action-emoji">🍔</div>
             <div className="action-title">Đặt món ăn</div>
-            <div className="action-status">Sắp ra mắt</div>
-          </div>
+            <div className="action-desc">Chọn nhà hàng và xem thực đơn.</div>
+          </Link>
         )}
       </div>
     </div>

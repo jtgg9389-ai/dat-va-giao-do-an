@@ -1,132 +1,82 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import api from '../api';
-
-const roleLabels = {
-  customer: 'Khách hàng',
-  restaurant: 'Nhà hàng',
-  driver: 'Tài xế',
-  admin: 'Quản trị viên',
-};
+import AdminLayout from './AdminLayout';
+import describeError from '../utils/describeError';
+import { roleLabels } from '../utils/labels';
 
 function AdminDashboard() {
-  const [users, setUsers] = useState([]);
-  const [error, setError] = useState('');
-  const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
-  const currentUser = JSON.parse(localStorage.getItem('user'));
-
-  const fetchUsers = async () => {
-    try {
-      const res = await api.get('/admin/users');
-      setUsers(res.data.users);
-    } catch (err) {
-      if (err.response?.status === 403) {
-        setError('Bạn không có quyền truy cập trang này');
-      } else if (err.response?.status === 401) {
-        navigate('/login');
-      } else {
-        setError('Không tải được danh sách người dùng');
-      }
-    } finally {
-      setLoading(false);
-    }
-  };
+  const [stats, setStats] = useState(null);
+  const [error, setError] = useState('');
+  const [reloadKey, setReloadKey] = useState(0);
 
   useEffect(() => {
-    fetchUsers();
-  }, []);
-
-  const handleRoleChange = async (userId, newRole) => {
-    try {
-      await api.put(`/admin/users/${userId}/role`, { role: newRole });
-      fetchUsers(); // tải lại danh sách sau khi đổi
-    } catch (err) {
-      alert(err.response?.data?.message || 'Có lỗi xảy ra');
-    }
-  };
-
-  const handleDelete = async (userId, name) => {
-    if (!window.confirm(`Xác nhận xoá tài khoản "${name}"?`)) return;
-    try {
-      await api.delete(`/admin/users/${userId}`);
-      fetchUsers();
-    } catch (err) {
-      alert(err.response?.data?.message || 'Có lỗi xảy ra');
-    }
-  };
-
-  if (loading) return <p style={{ textAlign: 'center', marginTop: 50 }}>Đang tải...</p>;
-
-  if (error) {
-    return (
-      <div style={{ textAlign: 'center', marginTop: 50 }}>
-        <p style={{ color: 'red' }}>{error}</p>
-        <button onClick={() => navigate('/')}>Về trang chủ</button>
-      </div>
-    );
-  }
+    let ignore = false;
+    api.get('/admin/stats')
+      .then((res) => {
+        if (!ignore) { setStats(res.data); setError(''); }
+      })
+      .catch((err) => {
+        if (!ignore) setError(describeError(err, navigate, 'Không tải được số liệu tổng quan'));
+      });
+    return () => { ignore = true; };
+  }, [reloadKey, navigate]);
 
   return (
-    <div style={styles.container}>
-      <div style={styles.header}>
-        <h2>Quản lý người dùng ({users.length})</h2>
-        <button onClick={() => navigate('/')}>Về trang chủ</button>
-      </div>
+    <AdminLayout title="Tổng quan">
+      {error && (
+        <div className="ad-alert" role="alert">
+          <span>{error}</span>
+          <button className="ad-btn small" onClick={() => { setError(''); setReloadKey((k) => k + 1); }}>
+            Thử lại
+          </button>
+        </div>
+      )}
 
-      <table style={styles.table}>
-        <thead>
-          <tr>
-            <th style={styles.th}>Họ tên</th>
-            <th style={styles.th}>Email</th>
-            <th style={styles.th}>SĐT</th>
-            <th style={styles.th}>Vai trò</th>
-            <th style={styles.th}>Ngày tạo</th>
-            <th style={styles.th}>Hành động</th>
-          </tr>
-        </thead>
-        <tbody>
-          {users.map((u) => (
-            <tr key={u._id}>
-              <td style={styles.td}>{u.name}</td>
-              <td style={styles.td}>{u.email}</td>
-              <td style={styles.td}>{u.phone || '—'}</td>
-              <td style={styles.td}>
-                <select
-                  value={u.role}
-                  onChange={(e) => handleRoleChange(u._id, e.target.value)}
-                  disabled={u._id === currentUser.id} // không tự đổi role chính mình
-                >
-                  {Object.entries(roleLabels).map(([value, label]) => (
-                    <option key={value} value={value}>{label}</option>
-                  ))}
-                </select>
-              </td>
-              <td style={styles.td}>{new Date(u.createdAt).toLocaleDateString('vi-VN')}</td>
-              <td style={styles.td}>
-                <button
-                  style={styles.deleteBtn}
-                  onClick={() => handleDelete(u._id, u.name)}
-                  disabled={u._id === currentUser.id}
-                >
-                  Xoá
-                </button>
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
+      {!stats && !error && <p className="ad-muted">Đang tải...</p>}
+
+      {stats && (
+        <>
+          <div className="ad-stats">
+            <Link to="/admin/complaints" className="ad-stat">
+              <div className="ad-stat-num">{stats.complaints.open}</div>
+              <div className="ad-stat-label">Khiếu nại chờ xử lý</div>
+              <div className="ad-stat-sub">Đang xem xét: {stats.complaints.inReview}</div>
+            </Link>
+
+            <Link to="/admin/partners" className="ad-stat">
+              <div className="ad-stat-num">{stats.restaurants.pending}</div>
+              <div className="ad-stat-label">Nhà hàng chờ duyệt</div>
+              <div className="ad-stat-sub">Tổng số nhà hàng: {stats.restaurants.total}</div>
+            </Link>
+
+            <Link to="/admin/users" className="ad-stat">
+              <div className="ad-stat-num">{stats.users.total}</div>
+              <div className="ad-stat-label">Tổng số tài khoản</div>
+              <div className="ad-stat-sub">
+                {Object.entries(stats.users.byRole).map(([r, c]) => `${roleLabels[r]}: ${c}`).join(' · ')}
+              </div>
+            </Link>
+
+            <div className="ad-stat">
+              <div className="ad-stat-num">{stats.users.newThisWeek}</div>
+              <div className="ad-stat-label">Tài khoản mới trong 7 ngày</div>
+            </div>
+
+            <Link to="/admin/users" className="ad-stat">
+              <div className="ad-stat-num">{stats.users.locked}</div>
+              <div className="ad-stat-label">Tài khoản đang bị khóa</div>
+            </Link>
+          </div>
+
+          <p className="ad-note">
+            Số đơn theo trạng thái, doanh thu và hoa hồng sẽ hiển thị ở đây khi hoàn thành module Đơn hàng.
+          </p>
+        </>
+      )}
+    </AdminLayout>
   );
 }
-
-const styles = {
-  container: { padding: 30, maxWidth: 1000, margin: '0 auto' },
-  header: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 },
-  table: { width: '100%', borderCollapse: 'collapse', background: '#fff' },
-  th: { textAlign: 'left', padding: 10, borderBottom: '2px solid #ddd', background: '#f5f5f5' },
-  td: { padding: 10, borderBottom: '1px solid #eee' },
-  deleteBtn: { background: '#f44336', color: '#fff', border: 'none', padding: '6px 12px', borderRadius: 4, cursor: 'pointer' },
-};
 
 export default AdminDashboard;

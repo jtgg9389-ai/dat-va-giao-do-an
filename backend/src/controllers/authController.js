@@ -2,7 +2,7 @@ const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const User = require('../models/User');
 
-// Hàm kiểm tra định dạng email hợp lệ
+// Kiểm tra định dạng email hợp lệ
 const isValidEmail = (email) => {
   const regex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
   return regex.test(email);
@@ -13,33 +13,23 @@ exports.register = async (req, res) => {
   try {
     const { name, email, password, phone, role } = req.body;
 
-    // Validate: thiếu trường bắt buộc
     if (!name || !email || !password) {
       return res.status(400).json({ message: 'Vui lòng nhập đầy đủ họ tên, email và mật khẩu' });
     }
-
-    // Validate: tên quá ngắn
     if (name.trim().length < 2) {
       return res.status(400).json({ message: 'Họ tên phải có ít nhất 2 ký tự' });
     }
-
-    // Validate: email đúng định dạng
     if (!isValidEmail(email)) {
       return res.status(400).json({ message: 'Email không đúng định dạng' });
     }
-
-    // Validate: mật khẩu tối thiểu 6 ký tự
     if (password.length < 6) {
       return res.status(400).json({ message: 'Mật khẩu phải có ít nhất 6 ký tự' });
     }
 
-    // Validate: role hợp lệ (nếu có truyền lên)
     const validRoles = ['customer', 'restaurant', 'driver', 'admin'];
     if (role && !validRoles.includes(role)) {
       return res.status(400).json({ message: 'Vai trò không hợp lệ' });
     }
-
-    // Validate: số điện thoại (nếu có nhập) phải là số, 9-11 chữ số
     if (phone && !/^\d{9,11}$/.test(phone)) {
       return res.status(400).json({ message: 'Số điện thoại không hợp lệ' });
     }
@@ -84,7 +74,11 @@ exports.login = async (req, res) => {
     if (!isMatch) {
       return res.status(401).json({ message: 'Email hoặc mật khẩu không đúng' });
     }
-
+        if (user.status === 'locked') {
+      return res.status(403).json({
+        message: `Tài khoản đã bị khóa. Lý do: ${user.lockReason || 'vi phạm quy định'}. Vui lòng liên hệ quản trị viên.`,
+      });
+    }
     const token = jwt.sign(
       { id: user._id, role: user.role, email: user.email },
       process.env.JWT_SECRET,
@@ -102,11 +96,10 @@ exports.login = async (req, res) => {
   }
 };
 
-// LẤY THÔNG TIN CÁ NHÂN (route được bảo vệ — cần đăng nhập mới gọi được)
+// LẤY THÔNG TIN CÁ NHÂN
 exports.getProfile = async (req, res) => {
   try {
-    // req.user được middleware verifyToken gắn vào, lấy từ token đã giải mã
-    const user = await User.findById(req.user.id).select('-password'); // không trả về password
+    const user = await User.findById(req.user.id).select('-password');
     if (!user) {
       return res.status(404).json({ message: 'Không tìm thấy người dùng' });
     }
@@ -117,25 +110,89 @@ exports.getProfile = async (req, res) => {
   }
 };
 
-// CẬP NHẬT THÔNG TIN CÁ NHÂN
+// CẬP NHẬT THÔNG TIN CÁ NHÂN (chỉ cập nhật các trường được gửi lên)
 exports.updateProfile = async (req, res) => {
   try {
-    const { name, phone } = req.body;
+    const { name, phone, gender, birthday, address } = req.body;
+    const update = {};
 
-    if (name && name.trim().length < 2) {
-      return res.status(400).json({ message: 'Họ tên phải có ít nhất 2 ký tự' });
+    if (name !== undefined) {
+      if (name.trim().length < 2) {
+        return res.status(400).json({ message: 'Họ tên phải có ít nhất 2 ký tự' });
+      }
+      update.name = name.trim();
     }
-    if (phone && !/^\d{9,11}$/.test(phone)) {
-      return res.status(400).json({ message: 'Số điện thoại không hợp lệ' });
+
+    if (phone !== undefined) {
+      if (phone && !/^\d{9,11}$/.test(phone)) {
+        return res.status(400).json({ message: 'Số điện thoại phải gồm 9-11 chữ số' });
+      }
+      update.phone = phone;
     }
 
-    const updated = await User.findByIdAndUpdate(
-      req.user.id,
-      { ...(name && { name: name.trim() }), ...(phone && { phone }) },
-      { new: true }
-    ).select('-password');
+    if (gender !== undefined) {
+      if (!['', 'male', 'female', 'other'].includes(gender)) {
+        return res.status(400).json({ message: 'Giới tính không hợp lệ' });
+      }
+      update.gender = gender;
+    }
 
+    if (birthday !== undefined) {
+      if (birthday) {
+        const d = new Date(birthday);
+        if (isNaN(d.getTime()) || d > new Date()) {
+          return res.status(400).json({ message: 'Ngày sinh không hợp lệ' });
+        }
+        update.birthday = d;
+      } else {
+        update.birthday = null;
+      }
+    }
+
+    if (address !== undefined) {
+      if (address.length > 200) {
+        return res.status(400).json({ message: 'Địa chỉ không được quá 200 ký tự' });
+      }
+      update.address = address.trim();
+    }
+
+    const updated = await User.findByIdAndUpdate(req.user.id, update, { new: true }).select('-password');
     res.json({ message: 'Cập nhật thành công', user: updated });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Lỗi server, vui lòng thử lại sau' });
+  }
+};
+
+// ĐỔI MẬT KHẨU
+exports.changePassword = async (req, res) => {
+  try {
+    const { currentPassword, newPassword } = req.body;
+
+    if (!currentPassword || !newPassword) {
+      return res.status(400).json({ message: 'Vui lòng nhập mật khẩu hiện tại và mật khẩu mới' });
+    }
+    if (newPassword.length < 6) {
+      return res.status(400).json({ message: 'Mật khẩu mới phải có ít nhất 6 ký tự' });
+    }
+    if (currentPassword === newPassword) {
+      return res.status(400).json({ message: 'Mật khẩu mới phải khác mật khẩu hiện tại' });
+    }
+
+    const user = await User.findById(req.user.id);
+    if (!user) {
+      return res.status(404).json({ message: 'Không tìm thấy người dùng' });
+    }
+
+    const isMatch = await bcrypt.compare(currentPassword, user.password);
+    if (!isMatch) {
+      return res.status(400).json({ message: 'Mật khẩu hiện tại không đúng' });
+    }
+
+    user.password = await bcrypt.hash(newPassword, 10);
+    await user.save();
+
+    res.json({ message: 'Đổi mật khẩu thành công' });
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: 'Lỗi server, vui lòng thử lại sau' });
