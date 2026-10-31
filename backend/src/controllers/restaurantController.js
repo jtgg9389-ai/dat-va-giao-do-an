@@ -1,5 +1,9 @@
 const mongoose = require('mongoose');
+const { validateMenuImage } = require('../utils/menuImage');
 const Restaurant = require('../models/Restaurant');
+const Review = require('../models/Review');
+const { coordinates } = require('../services/orderFlow');
+const MenuItem = require('../models/MenuItem');
 
 const User = require('../models/User');
 const serverError = (res, err) => {
@@ -45,9 +49,15 @@ const validateMenuItem = (body, partial = false) => {
   }
 
   if (available !== undefined) {
-    data.available = Boolean(available);
+    if (typeof available !== 'boolean') return { error: 'Trạng thái món phải là true hoặc false' };
+    data.available = available;
   }
 
+  if (body.image !== undefined) {
+    const result = validateMenuImage(body.image);
+    if (result.error) return result;
+    data.image = result.image;
+  }
   return { data };
 };
 
@@ -69,7 +79,7 @@ exports.getMyRestaurant = async (req, res) => {
 // Tạo quán (lần đầu) hoặc cập nhật thông tin quán
 exports.saveMyRestaurant = async (req, res) => {
   try {
-    const { name, description, address, phone, isOpen } = req.body || {};
+    const { name, description, address, phone, isOpen, location, cuisine } = req.body || {};
     const existing = await findOwnRestaurant(req.user.id);
     const update = {};
 
@@ -102,6 +112,8 @@ exports.saveMyRestaurant = async (req, res) => {
       update.description = description.trim();
     }
 
+    if (location !== undefined) { if (!coordinates(location)) return res.status(400).json({ message: 'Tọa độ quán không hợp lệ' }); update.location = location; }
+    if (cuisine !== undefined) { if (typeof cuisine !== 'string' || cuisine.length > 50) return res.status(400).json({ message: 'Loại món không hợp lệ' }); update.cuisine = cuisine.trim(); }
     if (isOpen !== undefined) update.isOpen = Boolean(isOpen);
 
     const restaurant = await Restaurant.findOneAndUpdate(
@@ -192,9 +204,11 @@ const publicFilter = async () => {
 exports.listRestaurants = async (req, res) => {
   try {
     const restaurants = await Restaurant.find(await publicFilter())
-      .select('name description address phone isOpen')
+      .select('name description address phone isOpen location cuisine')
       .sort({ isOpen: -1, name: 1 });
-    res.json({ restaurants });
+    const ratings = await Review.aggregate([{ $group: { _id: '$restaurant', rating: { $avg: '$restaurantRating' }, count: { $sum: 1 } } }]);
+    const withRatings = restaurants.map(r => ({ ...r.toObject(), rating: ratings.find(x => String(x._id) === r.id)?.rating || 0 }));
+    res.json({ restaurants: withRatings });
   } catch (err) {
     return serverError(res, err);
   }
@@ -209,7 +223,7 @@ exports.getRestaurantDetail = async (req, res) => {
     }
 
     const restaurant = await Restaurant.findOne({ _id: id, ...(await publicFilter()) })
-      .select('name description address phone isOpen');
+      .select('name description address phone isOpen location cuisine');
     if (!restaurant) return res.status(404).json({ message: 'Không tìm thấy nhà hàng' });
 
     const menu = await MenuItem.find({ restaurant: id }).sort({ category: 1, createdAt: 1 });

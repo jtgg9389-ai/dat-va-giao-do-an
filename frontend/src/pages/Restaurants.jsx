@@ -7,6 +7,8 @@ function Restaurants() {
   const navigate = useNavigate();
   const [restaurants, setRestaurants] = useState([]);
   const [search, setSearch] = useState('');
+  const [cuisine, setCuisine] = useState('');
+  const [minRating, setMinRating] = useState('0');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
@@ -31,7 +33,7 @@ function Restaurants() {
 
   const keyword = search.trim().toLowerCase();
   const filtered = restaurants.filter(
-    (r) => r.name.toLowerCase().includes(keyword) || r.address.toLowerCase().includes(keyword)
+    (r) => (r.name.toLowerCase().includes(keyword) || r.address.toLowerCase().includes(keyword)) && (!cuisine || r.cuisine === cuisine) && (r.rating || 0) >= Number(minRating)
   );
 
   return (
@@ -49,6 +51,7 @@ function Restaurants() {
           onChange={(e) => setSearch(e.target.value)}
         />
 
+        <div className="rs-toolbar"><label>Loại món <select value={cuisine} onChange={e => setCuisine(e.target.value)}><option value="">Tất cả</option>{[...new Set(restaurants.map(r => r.cuisine).filter(Boolean))].map(c => <option key={c}>{c}</option>)}</select></label><label>Đánh giá từ <select value={minRating} onChange={e => setMinRating(e.target.value)}>{[0,3,4,5].map(n => <option key={n} value={n}>{n === 0 ? 'Tất cả' : n + ' sao'}</option>)}</select></label></div>
         {loading && <p className="rs-empty">Đang tải...</p>}
         {error && <p className="rs-error">{error}</p>}
 
@@ -70,6 +73,7 @@ function Restaurants() {
               <div className="rs-rest-icon">🍽️</div>
               <div className="rs-rest-name">{r.name}</div>
               {r.description && <div className="rs-rest-desc">{r.description}</div>}
+              <div>{r.cuisine || 'Chưa phân loại'} · {r.rating ? r.rating.toFixed(1) + ' ★' : 'Chưa có đánh giá'}</div>
               <div className="rs-rest-addr">📍 {r.address}</div>
               <span className={`rs-badge ${r.isOpen ? 'open' : 'off'}`}>
                 {r.isOpen ? 'Đang mở cửa' : 'Đã đóng cửa'}

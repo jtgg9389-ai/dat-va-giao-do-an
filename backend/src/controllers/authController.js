@@ -1,5 +1,8 @@
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
+const { rolesOf, sessionUser, MODES } = require('../utils/accountRoles');
+const Order = require('../models/Order');
+const Driver = require('../models/DriverProfile');
 const User = require('../models/User');
 
 // Kiểm tra định dạng email hợp lệ
@@ -11,9 +14,9 @@ const isValidEmail = (email) => {
 // ĐĂNG KÝ
 exports.register = async (req, res) => {
   try {
-    const { name, email, password, phone, role } = req.body;
+    const { name, email, password, phone, role } = req.body || {};
 
-    if (!name || !email || !password) {
+    if (typeof name !== 'string' || typeof email !== 'string' || typeof password !== 'string' || !name || !email || !password) {
       return res.status(400).json({ message: 'Vui lòng nhập đầy đủ họ tên, email và mật khẩu' });
     }
     if (name.trim().length < 2) {
@@ -26,7 +29,7 @@ exports.register = async (req, res) => {
       return res.status(400).json({ message: 'Mật khẩu phải có ít nhất 6 ký tự' });
     }
 
-    const validRoles = ['customer', 'restaurant', 'driver', 'admin'];
+    const validRoles = ['customer', 'restaurant', 'driver'];
     if (role && !validRoles.includes(role)) {
       return res.status(400).json({ message: 'Vai trò không hợp lệ' });
     }
@@ -59,9 +62,9 @@ exports.register = async (req, res) => {
 // ĐĂNG NHẬP
 exports.login = async (req, res) => {
   try {
-    const { email, password } = req.body;
+    const { email, password } = req.body || {};
 
-    if (!email || !password) {
+    if (typeof email !== 'string' || typeof password !== 'string' || !email || !password) {
       return res.status(400).json({ message: 'Vui lòng nhập email và mật khẩu' });
     }
 
@@ -79,8 +82,9 @@ exports.login = async (req, res) => {
         message: `Tài khoản đã bị khóa. Lý do: ${user.lockReason || 'vi phạm quy định'}. Vui lòng liên hệ quản trị viên.`,
       });
     }
+    const activeRole = rolesOf(user).includes(user.activeRole) ? user.activeRole : user.role;
     const token = jwt.sign(
-      { id: user._id, role: user.role, email: user.email },
+      { id: user._id, activeRole, email: user.email },
       process.env.JWT_SECRET,
       { expiresIn: '7d' }
     );
@@ -88,7 +92,7 @@ exports.login = async (req, res) => {
     res.json({
       message: 'Đăng nhập thành công',
       token,
-      user: { id: user._id, name: user.name, email: user.email, role: user.role },
+      user: sessionUser(user, activeRole),
     });
   } catch (err) {
     console.error(err);
@@ -103,7 +107,7 @@ exports.getProfile = async (req, res) => {
     if (!user) {
       return res.status(404).json({ message: 'Không tìm thấy người dùng' });
     }
-    res.json({ user });
+    res.json({ user: { ...user.toObject(), accountRole: user.role, role: req.user.role, roles: rolesOf(user) } });
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: 'Lỗi server, vui lòng thử lại sau' });
@@ -113,7 +117,7 @@ exports.getProfile = async (req, res) => {
 // CẬP NHẬT THÔNG TIN CÁ NHÂN (chỉ cập nhật các trường được gửi lên)
 exports.updateProfile = async (req, res) => {
   try {
-    const { name, phone, gender, birthday, address } = req.body;
+    const { name, phone, gender, birthday, address } = req.body || {};
     const update = {};
 
     if (name !== undefined) {
@@ -157,7 +161,7 @@ exports.updateProfile = async (req, res) => {
     }
 
     const updated = await User.findByIdAndUpdate(req.user.id, update, { new: true }).select('-password');
-    res.json({ message: 'Cập nhật thành công', user: updated });
+    res.json({ message: 'Cập nhật thành công', user: { ...updated.toObject(), accountRole: updated.role, role: req.user.role, roles: rolesOf(updated) } });
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: 'Lỗi server, vui lòng thử lại sau' });
@@ -167,7 +171,7 @@ exports.updateProfile = async (req, res) => {
 // ĐỔI MẬT KHẨU
 exports.changePassword = async (req, res) => {
   try {
-    const { currentPassword, newPassword } = req.body;
+    const { currentPassword, newPassword } = req.body || {};
 
     if (!currentPassword || !newPassword) {
       return res.status(400).json({ message: 'Vui lòng nhập mật khẩu hiện tại và mật khẩu mới' });
@@ -197,4 +201,25 @@ exports.changePassword = async (req, res) => {
     console.error(err);
     res.status(500).json({ message: 'Lỗi server, vui lòng thử lại sau' });
   }
+};
+// Account identity and partner approvals remain unchanged; only the session mode changes.
+exports.switchRole = async (req, res) => {
+  const target = req.body?.role;
+  if (!MODES.includes(target)) return res.status(400).json({ message: 'Chỉ chuyển giữa khách hàng, tài xế và nhà hàng' });
+  const user = await User.findById(req.user.id);
+  if (!user || user.role === 'admin') return res.status(403).json({ message: 'Tài khoản admin không dùng chức năng chuyển chế độ đối tác' });
+  // Serialize mode changes with offer acceptance/availability by first making the
+  // driver unavailable. Driver offer acceptance also rechecks the active mode.
+  if (req.user.role === 'driver' && target !== 'driver') {
+    await Driver.updateOne({ user: user._id }, { $set: { online: false } });
+    if (await Order.exists({ driver: user._id, status: { $in: ['CONFIRMED','PREPARING','READY_FOR_PICKUP','PICKED_UP','DELIVERING'] } })) return res.status(409).json({ message: 'Bạn đang có cuốc chưa hoàn tất. Hãy giao xong hoặc liên hệ admin trước khi chuyển chế độ.' });
+  }
+  const updated = await User.findOneAndUpdate({ _id: user._id, status: { $ne: 'locked' }, role: { $ne: 'admin' }, ...(user.activeRole ? { activeRole: user.activeRole } : { activeRole: { $exists: false } }) }, { $set: { activeRole: target }, $addToSet: { roles: { $each: [...new Set([user.role, target])].filter(r => MODES.includes(r)) } } }, { new: true });
+  if (!updated) return res.status(409).json({ message: 'Chế độ vừa thay đổi ở cửa sổ khác; hãy đăng nhập lại.' });
+  if (target === 'driver') {
+    try { await Driver.updateOne({ user: user._id }, req.user.role !== 'driver' ? { $set: { online: false } } : { $setOnInsert: { online: false } }, { upsert: true }); }
+    catch (error) { if (error.code !== 11000) throw error; }
+  }
+  const token = jwt.sign({ id: updated._id, activeRole: target, email: updated.email }, process.env.JWT_SECRET, { expiresIn: '7d' });
+  res.json({ token, user: sessionUser(updated, target), message: 'Đã chuyển chế độ tài khoản' });
 };

@@ -1,0 +1,5 @@
+import useLiveResource from '../hooks/useLiveResource';
+export default function PartnerSettlements({ party = 'restaurant' }) {
+  const state = useLiveResource('/settlements');
+  return <section className="rs-card"><h2>Đối soát đã chốt — thu/chi giả lập</h2>{state.error && <p className="rs-error">{state.error}</p>}{state.loading && <p>Đang tải…</p>}{state.data?.orders.length === 0 && <p>Chưa có khoản đối soát đã chốt.</p>}{state.data?.orders.map(o => { const settlement = party === 'driver' ? o.driverSettlement : o.settlement; const amount = party === 'driver' ? settlement?.amount : o.restaurantNetAmount; return <div className="rs-order" key={o._id}>#{o._id.slice(-8)} · {settlement?.reference} · {amount < 0 ? 'Phải nộp' : 'Được nhận'} {Math.abs(amount || 0).toLocaleString('vi-VN')} ₫ · {settlement?.paidAt ? 'Đã ghi nhận thu/chi giả lập' : 'Chưa ghi nhận thu/chi'}</div>; })}<h3>Điều chỉnh sau chốt</h3>{state.data?.adjustments?.map(a => <div className="rs-order" key={a._id}>{a.reference} · {a.amount < 0 ? 'Phải nộp' : 'Được nhận'} {Math.abs(a.amount).toLocaleString('vi-VN')} ₫ · {a.reason} · {a.paidAt ? 'Đã ghi nhận giả lập' : 'Chưa ghi nhận'}</div>)}</section>;
+}

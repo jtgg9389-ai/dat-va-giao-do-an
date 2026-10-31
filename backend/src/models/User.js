@@ -13,6 +13,8 @@ const userSchema = new mongoose.Schema({
     enum: ['customer', 'restaurant', 'driver', 'admin'],
     default: 'customer',
   },
+  roles: { type: [String], enum: ['customer', 'driver', 'restaurant'], default: undefined },
+  activeRole: { type: String, enum: ['customer', 'driver', 'restaurant', 'admin'] },
   status: { type: String, enum: ['active', 'locked'], default: 'active' },
   lockReason: { type: String, default: '' },
   lockedAt: { type: Date, default: null },

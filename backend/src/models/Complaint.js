@@ -14,7 +14,8 @@ const complaintSchema = new mongoose.Schema({
   category: { type: String, enum: CATEGORIES, default: 'other' },
   subject: { type: String, required: true, trim: true, maxlength: 120 },
   description: { type: String, required: true, trim: true, maxlength: 1000 },
-  // Tạm là mã nhập tay; sẽ đổi thành liên kết đơn thật khi có module Đơn hàng
+  order: { type: mongoose.Schema.Types.ObjectId, ref: 'Order', index: true },
+  // Giữ mã nhập tay để tương thích hồ sơ hỗ trợ cũ.
   orderCode: { type: String, default: '', trim: true, maxlength: 30 },
   status: { type: String, enum: ['OPEN', 'IN_REVIEW', 'RESOLVED', 'REJECTED'], default: 'OPEN', index: true },
   assignedAdmin: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },

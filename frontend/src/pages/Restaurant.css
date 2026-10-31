@@ -325,3 +325,27 @@
     .rs-menu-item { flex-wrap: wrap; }
     .rs-menu-actions { width: 100%; }
   }
+.rs-toolbar { display: flex; flex-wrap: wrap; align-items: end; gap: 12px; margin: 16px 0; }
+.rs-toolbar select { padding: 8px; margin-left: 8px; max-width: 100%; }
+.rs-order { border-top: 1px solid #e5e0d6; padding: 16px 0; overflow-wrap: anywhere; }
+.rs-order h3 { font-size: 16px; margin-top: 0; }
+.rs-order details { margin-top: 14px; }
+.rs-order summary { cursor: pointer; }
+.rs-reject { margin-top: 16px; display: grid; gap: 12px; }
+.rs-metrics { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; }
+.rs-metrics div { padding: 14px; background: #fff1e6; border-radius: 10px; }
+.rs-metrics dt { font-size: 13px; }
+.rs-metrics dd { font-weight: 700; margin: 8px 0 0; }
+.rs-actions { flex-wrap: wrap; }
+
+.rs-menu-image { width: 88px; height: 88px; object-fit: cover; border-radius: 12px; flex-shrink: 0; }
+.rs-image-preview { display: flex; align-items: center; flex-wrap: wrap; gap: 12px; }
+.rs-image-preview img { width: 180px; height: 140px; object-fit: cover; border-radius: 12px; }
+
+.flow-map { height: 360px; width: 100%; border-radius: 12px; z-index: 0; }
+.flow-admin { display: grid; gap: 20px; }
+.rs-card select { padding: 9px; color: #1a1a2e; background: white; border: 1px solid #d6d0c4; border-radius: 8px; }
+.rs-card { overflow-wrap: anywhere; }
+
+.role-switcher { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; padding: 10px 24px; background: #fff1e6; color: #57534e; border-bottom: 1px solid #eed7c7; font: 14px -apple-system, 'Segoe UI', sans-serif; }
+.role-switcher select { margin-left: 8px; padding: 8px 12px; background: #fff; color: #1a1a2e; border: 1px solid #d6d0c4; border-radius: 8px; }
