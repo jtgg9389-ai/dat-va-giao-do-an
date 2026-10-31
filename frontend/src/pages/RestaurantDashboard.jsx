@@ -2,6 +2,8 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../api';
 import './Restaurant.css';
+import RestaurantOrders from '../components/RestaurantOrders';
+import RestaurantReport from '../components/RestaurantReport';
 
 const formatPrice = (n) => `${Number(n).toLocaleString('vi-VN')}đ`;
 
@@ -71,6 +73,7 @@ function RestaurantDashboard() {
     try {
       const res = await api.put('/restaurants/mine', info);
       setHasRestaurant(true);
+      setApproval({ status: res.data.restaurant.approvalStatus, reason: res.data.restaurant.rejectReason || '' });
       setInfoMsg({ type: 'success', text: res.data.message });
     } catch (err) {
       setInfoMsg({ type: 'error', text: err.response?.data?.message || 'Có lỗi xảy ra, vui lòng thử lại' });
@@ -214,6 +217,8 @@ function RestaurantDashboard() {
 
         {hasRestaurant && (
           <>
+            <RestaurantOrders />
+            <RestaurantReport />
             {/* Form thêm / sửa món */}
             <section className="rs-card" id="menu-form">
               <h2>{editingId ? 'Sửa món ăn' : 'Thêm món ăn'}</h2>

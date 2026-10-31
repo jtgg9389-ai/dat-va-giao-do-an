@@ -1,5 +1,6 @@
 const mongoose = require('mongoose');
 const Restaurant = require('../models/Restaurant');
+const MenuItem = require('../models/MenuItem');
 
 const User = require('../models/User');
 const serverError = (res, err) => {
@@ -45,7 +46,8 @@ const validateMenuItem = (body, partial = false) => {
   }
 
   if (available !== undefined) {
-    data.available = Boolean(available);
+    if (typeof available !== 'boolean') return { error: 'Trạng thái món phải là true hoặc false' };
+    data.available = available;
   }
 
   return { data };

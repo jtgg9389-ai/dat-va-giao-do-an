@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import api from '../api';
 import './Restaurant.css';
+import RestaurantCheckout from '../components/RestaurantCheckout';
 
 const formatPrice = (n) => `${Number(n).toLocaleString('vi-VN')}đ`;
 
@@ -86,10 +87,9 @@ function RestaurantDetail() {
                 </div>
               ))}
 
-              <p className="rs-hint" style={{ marginTop: 20 }}>
-                Giỏ hàng và đặt món sẽ được thêm ở bước tiếp theo.
-              </p>
+
             </section>
+            <RestaurantCheckout key={restaurant._id} restaurant={restaurant} menu={menu} />
           </>
         )}
       </div>

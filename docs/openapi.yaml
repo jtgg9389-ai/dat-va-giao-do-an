@@ -1,0 +1,2506 @@
+openapi: 3.0.3
+info:
+  title: API ứng dụng Đặt và Giao đồ ăn — hiện trạng
+  version: 1.0.0
+  description: Đặc tả các route có trong mã Express tại thời điểm lập tài liệu. Không khẳng định mọi route đã được
+    kiểm thử. Thiết kế tương lai /api/v1 xem docs/api-design.md. Swagger UI được phục vụ tại /api-docs/.
+servers:
+- url: http://localhost:5000/api
+  description: Backend phát triển cục bộ
+security:
+- bearerAuth: []
+tags:
+- name: Auth
+- name: Restaurants
+- name: Restaurant
+- name: Orders
+- name: Complaints
+- name: Admin
+paths:
+  /auth/register:
+    post:
+      summary: Đăng ký tài khoản
+      operationId: post_auth_register
+      tags:
+      - Auth
+      description: Mật khẩu bcrypt; email lowercase. Có tồn tại quyền tự đăng ký admin trong mã hiện tại; không
+        xem đó là thiết kế an toàn.
+      x-implementation-status: implemented
+      x-roles:
+      - public
+      responses:
+        '201':
+          description: Thành công
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                  userId: &id001
+                    type: string
+                    pattern: ^[0-9a-fA-F]{24}$
+                    example: 507f1f77bcf86cd799439011
+        '500':
+          description: Lỗi server
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '400':
+          description: Dữ liệu không hợp lệ
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '409':
+          description: Xung đột trạng thái hoặc dữ liệu
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RegisterRequest'
+  /auth/login:
+    post:
+      summary: Đăng nhập
+      operationId: post_auth_login
+      tags:
+      - Auth
+      description: JWT hết hạn sau 7 ngày; hiện chưa có refresh/logout/thu hồi token.
+      x-implementation-status: implemented
+      x-roles:
+      - public
+      responses:
+        '200':
+          description: Thành công
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                  token:
+                    type: string
+                  user:
+                    type: object
+                    properties:
+                      id: *id001
+                      name:
+                        type: string
+                      email:
+                        type: string
+                      role: &id005
+                        type: string
+                        enum: &id012
+                        - customer
+                        - restaurant
+                        - driver
+                        - admin
+        '500':
+          description: Lỗi server
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '400':
+          description: Dữ liệu không hợp lệ
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Sai email hoặc mật khẩu
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Tài khoản bị khóa
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+  /auth/profile:
+    get:
+      summary: Lấy hồ sơ của mình
+      operationId: get_auth_profile
+      tags:
+      - Auth
+      description: ''
+      x-implementation-status: implemented
+      x-roles: &id002
+      - customer
+      - restaurant
+      - driver
+      - admin
+      responses:
+        '200':
+          description: Thành công
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  user:
+                    $ref: '#/components/schemas/User'
+        '500':
+          description: Lỗi server
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Thiếu hoặc sai JWT
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Không đủ quyền hoặc tài khoản bị khóa
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Không tìm thấy tài nguyên
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    put:
+      summary: Cập nhật một phần hồ sơ
+      operationId: put_auth_profile
+      tags:
+      - Auth
+      description: ''
+      x-implementation-status: implemented
+      x-roles: *id002
+      responses:
+        '200':
+          description: Thành công
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                  user:
+                    $ref: '#/components/schemas/User'
+        '500':
+          description: Lỗi server
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Thiếu hoặc sai JWT
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Không đủ quyền hoặc tài khoản bị khóa
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '400':
+          description: Dữ liệu không hợp lệ
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ProfileUpdate'
+  /auth/change-password:
+    put:
+      summary: Đổi mật khẩu
+      operationId: put_auth_change_password
+      tags:
+      - Auth
+      description: Mật khẩu mới phải khác hiện tại. JWT cũ hiện chưa bị thu hồi.
+      x-implementation-status: implemented
+      x-roles: *id002
+      responses:
+        '200':
+          description: Thành công
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Message'
+        '500':
+          description: Lỗi server
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Thiếu hoặc sai JWT
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Không đủ quyền hoặc tài khoản bị khóa
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '400':
+          description: Dữ liệu không hợp lệ
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                currentPassword:
+                  type: string
+                  format: password
+                newPassword:
+                  type: string
+                  minLength: 6
+                  format: password
+              required:
+              - currentPassword
+              - newPassword
+  /restaurants:
+    get:
+      summary: Danh sách quán đã duyệt
+      operationId: get_restaurants
+      tags:
+      - Restaurants
+      description: Loại chủ quán bị khóa; sắp isOpen giảm dần rồi tên; chưa có lọc địa lý/đánh giá hoặc phân trang.
+      x-implementation-status: implemented
+      x-roles: *id002
+      responses:
+        '200':
+          description: Thành công
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  restaurants:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/PublicRestaurant'
+        '500':
+          description: Lỗi server
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Thiếu hoặc sai JWT
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Không đủ quyền hoặc tài khoản bị khóa
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /restaurants/{id}:
+    get:
+      summary: Chi tiết quán và thực đơn
+      operationId: get_restaurants_id
+      tags:
+      - Restaurants
+      description: Menu gồm cả món hết hàng; quán phải được duyệt, chủ không bị khóa.
+      x-implementation-status: implemented
+      x-roles: *id002
+      responses:
+        '200':
+          description: Thành công
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  restaurant:
+                    $ref: '#/components/schemas/PublicRestaurant'
+                  menu:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/MenuItem'
+        '500':
+          description: Lỗi server
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Thiếu hoặc sai JWT
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Không đủ quyền hoặc tài khoản bị khóa
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Không tìm thấy tài nguyên
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema: *id001
+        description: MongoDB ObjectId.
+  /restaurants/mine:
+    get:
+      summary: Lấy quán và menu của mình
+      operationId: get_restaurants_mine
+      tags:
+      - Restaurant
+      description: Chưa tạo quán trả restaurant=null, menu=[].
+      x-implementation-status: implemented
+      x-roles:
+      - restaurant
+      responses:
+        '200':
+          description: Thành công
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  restaurant:
+                    type: object
+                    nullable: true
+                    allOf:
+                    - $ref: '#/components/schemas/Restaurant'
+                  menu:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/MenuItem'
+        '500':
+          description: Lỗi server
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Thiếu hoặc sai JWT
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Không đủ quyền hoặc tài khoản bị khóa
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    put:
+      summary: Tạo hoặc sửa quán của mình
+      operationId: put_restaurants_mine
+      tags:
+      - Restaurant
+      description: ''
+      x-implementation-status: implemented
+      x-roles:
+      - restaurant
+      responses:
+        '200':
+          description: Thành công
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                  restaurant:
+                    $ref: '#/components/schemas/Restaurant'
+        '500':
+          description: Lỗi server
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Thiếu hoặc sai JWT
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Không đủ quyền hoặc tài khoản bị khóa
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '400':
+          description: Dữ liệu không hợp lệ
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RestaurantUpdate'
+  /restaurants/mine/menu:
+    post:
+      summary: Thêm món
+      operationId: post_restaurants_mine_menu
+      tags:
+      - Restaurant
+      description: ''
+      x-implementation-status: implemented
+      x-roles:
+      - restaurant
+      responses:
+        '201':
+          description: Thành công
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                  item:
+                    $ref: '#/components/schemas/MenuItem'
+        '500':
+          description: Lỗi server
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Thiếu hoặc sai JWT
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Không đủ quyền hoặc tài khoản bị khóa
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '400':
+          description: Dữ liệu không hợp lệ
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MenuCreate'
+  /restaurants/mine/menu/{itemId}:
+    put:
+      summary: Sửa món hoặc trạng thái còn hàng
+      operationId: put_restaurants_mine_menu_itemId
+      tags:
+      - Restaurant
+      description: ''
+      x-implementation-status: implemented
+      x-roles:
+      - restaurant
+      responses:
+        '200':
+          description: Thành công
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                  item:
+                    $ref: '#/components/schemas/MenuItem'
+        '500':
+          description: Lỗi server
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Thiếu hoặc sai JWT
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Không đủ quyền hoặc tài khoản bị khóa
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '400':
+          description: Dữ liệu không hợp lệ
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Không tìm thấy tài nguyên
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      parameters:
+      - name: itemId
+        in: path
+        required: true
+        schema: *id001
+        description: MongoDB ObjectId.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MenuUpdate'
+    delete:
+      summary: Xóa món của quán
+      operationId: delete_restaurants_mine_menu_itemId
+      tags:
+      - Restaurant
+      description: Hiện xóa cứng MenuItem; đơn giữ snapshot nên tên/giá đơn cũ không đổi.
+      x-implementation-status: implemented
+      x-roles:
+      - restaurant
+      responses:
+        '200':
+          description: Thành công
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Message'
+        '500':
+          description: Lỗi server
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Thiếu hoặc sai JWT
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Không đủ quyền hoặc tài khoản bị khóa
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Không tìm thấy tài nguyên
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      parameters:
+      - name: itemId
+        in: path
+        required: true
+        schema: *id001
+        description: MongoDB ObjectId.
+  /orders:
+    post:
+      summary: Tạo đơn COD từ menu
+      operationId: post_orders
+      tags:
+      - Orders
+      description: Quán mở/được duyệt, chủ không khóa. Giá do server tính, hoa hồng 10%. Chưa có phí giao/quote.
+        Cùng customer+key trả đơn cũ; hiện chưa so sánh payload khi tái dùng key.
+      x-implementation-status: implemented
+      x-roles:
+      - customer
+      responses:
+        '201':
+          description: Thành công
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  order:
+                    $ref: '#/components/schemas/Order'
+        '500':
+          description: Lỗi server
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Thiếu hoặc sai JWT
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Không đủ quyền hoặc tài khoản bị khóa
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '400':
+          description: Dữ liệu không hợp lệ
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '409':
+          description: Xung đột trạng thái hoặc dữ liệu
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '200':
+          description: Trả đơn đã tồn tại cho cùng khách và Idempotency-Key
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  order:
+                    $ref: '#/components/schemas/Order'
+      parameters:
+      - name: Idempotency-Key
+        in: header
+        required: true
+        schema:
+          type: string
+          pattern: ^[A-Za-z0-9_-]{8,100}$
+        description: ''
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/OrderCreate'
+  /restaurants/mine/orders:
+    get:
+      summary: 200 đơn gần nhất của quán
+      operationId: get_restaurants_mine_orders
+      tags:
+      - Restaurant
+      description: ''
+      x-implementation-status: implemented
+      x-roles:
+      - restaurant
+      responses:
+        '200':
+          description: Thành công
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  orders:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Order'
+        '500':
+          description: Lỗi server
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Thiếu hoặc sai JWT
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Không đủ quyền hoặc tài khoản bị khóa
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Không tìm thấy tài nguyên
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /restaurants/mine/orders/{orderId}/status:
+    patch:
+      summary: Xác nhận, từ chối hoặc cập nhật chế biến
+      operationId: patch_restaurants_mine_orders_orderId_status
+      tags:
+      - Restaurant
+      description: PENDING_CONFIRMATION → CONFIRMED/REJECTED; CONFIRMED → PREPARING → READY_FOR_PICKUP. Atomic compare-and-set;
+        không thuộc quán hoặc trạng thái cũ không khớp trả 409.
+      x-implementation-status: implemented
+      x-roles:
+      - restaurant
+      responses:
+        '200':
+          description: Thành công
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  order:
+                    $ref: '#/components/schemas/Order'
+        '500':
+          description: Lỗi server
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Thiếu hoặc sai JWT
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Không đủ quyền hoặc tài khoản bị khóa
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '400':
+          description: Dữ liệu không hợp lệ
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Không tìm thấy tài nguyên
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '409':
+          description: Xung đột trạng thái hoặc dữ liệu
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      parameters:
+      - name: orderId
+        in: path
+        required: true
+        schema: *id001
+        description: MongoDB ObjectId.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/StatusUpdate'
+  /restaurants/mine/orders/stream:
+    get:
+      summary: Stream đơn của quán bằng SSE
+      operationId: get_restaurants_mine_orders_stream
+      tags:
+      - Restaurant
+      description: 'Fetch với Bearer header. Snapshot data: {orders}; kiểm tra mỗi 2 giây, phát khi đổi; : heartbeat
+        khi không đổi. Tối đa 200 đơn. event: unavailable rồi đóng khi lỗi. Token hết hạn/khóa/đổi vai trò đóng
+        stream. Không có event ID hay Last-Event-ID; reconnect nhận snapshot mới.'
+      x-implementation-status: implemented
+      x-roles:
+      - restaurant
+      responses:
+        '200':
+          description: Kết nối SSE dài hạn
+          content:
+            text/event-stream:
+              schema:
+                type: string
+              example: 'data: {"orders":[]}
+
+
+                : heartbeat
+
+
+                '
+        '500':
+          description: Lỗi server
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Thiếu hoặc sai JWT
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Không đủ quyền hoặc tài khoản bị khóa
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Không tìm thấy tài nguyên
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /restaurants/mine/report:
+    get:
+      summary: Doanh thu và lịch sử kỳ đã chốt
+      operationId: get_restaurants_mine_report
+      tags:
+      - Restaurant
+      description: Hai ngày bao gồm theo UTC+7. Chỉ COMPLETED; tổng theo completedAt, kỳ theo settlement.finalizedAt.
+        Chỉ đọc; chưa có module chốt/chi. COD chưa xác nhận vẫn hiện trong doanh thu hoàn tất, cần giữ lại khi chốt
+        đối soát.
+      x-implementation-status: implemented
+      x-roles:
+      - restaurant
+      responses:
+        '200':
+          description: Thành công
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Report'
+        '500':
+          description: Lỗi server
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Thiếu hoặc sai JWT
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Không đủ quyền hoặc tài khoản bị khóa
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '400':
+          description: Dữ liệu không hợp lệ
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Không tìm thấy tài nguyên
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      parameters:
+      - name: from
+        in: query
+        required: true
+        schema:
+          type: string
+          format: date
+        description: ''
+      - name: to
+        in: query
+        required: true
+        schema:
+          type: string
+          format: date
+        description: ''
+  /complaints:
+    post:
+      summary: Tạo khiếu nại
+      operationId: post_complaints
+      tags:
+      - Complaints
+      description: Tối đa 10 hồ sơ OPEN/IN_REVIEW (kiểm tra đếm hiện chưa atomic).
+      x-implementation-status: implemented
+      x-roles: &id003
+      - customer
+      - restaurant
+      - driver
+      responses:
+        '201':
+          description: Thành công
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                  complaint:
+                    $ref: '#/components/schemas/Complaint'
+        '500':
+          description: Lỗi server
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Thiếu hoặc sai JWT
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Không đủ quyền hoặc tài khoản bị khóa
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '400':
+          description: Dữ liệu không hợp lệ
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '429':
+          description: Đạt giới hạn khiếu nại đang mở
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ComplaintCreate'
+    get:
+      summary: 100 khiếu nại gần cập nhật của mình
+      operationId: get_complaints
+      tags:
+      - Complaints
+      description: ''
+      x-implementation-status: implemented
+      x-roles: *id003
+      responses:
+        '200':
+          description: Thành công
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  complaints:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        _id: *id001
+                        category:
+                          type: string
+                        subject:
+                          type: string
+                        status:
+                          type: string
+                        createdAt: &id004
+                          type: string
+                          format: date-time
+                        updatedAt: *id004
+        '500':
+          description: Lỗi server
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Thiếu hoặc sai JWT
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Không đủ quyền hoặc tài khoản bị khóa
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /complaints/{id}:
+    get:
+      summary: Chi tiết khiếu nại của mình
+      operationId: get_complaints_id
+      tags:
+      - Complaints
+      description: Không trả assignedAdmin cho người gửi.
+      x-implementation-status: implemented
+      x-roles: *id003
+      responses:
+        '200':
+          description: Thành công
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  complaint:
+                    $ref: '#/components/schemas/Complaint'
+        '500':
+          description: Lỗi server
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Thiếu hoặc sai JWT
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Không đủ quyền hoặc tài khoản bị khóa
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Không tìm thấy tài nguyên
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema: *id001
+        description: MongoDB ObjectId.
+  /complaints/{id}/messages:
+    post:
+      summary: Gửi thêm tin nhắn
+      operationId: post_complaints_id_messages
+      tags:
+      - Complaints
+      description: Chỉ hồ sơ OPEN/IN_REVIEW, tổng messages dưới 50. Không trả assignedAdmin.
+      x-implementation-status: implemented
+      x-roles: *id003
+      responses:
+        '200':
+          description: Thành công
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                  complaint:
+                    $ref: '#/components/schemas/Complaint'
+        '500':
+          description: Lỗi server
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Thiếu hoặc sai JWT
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Không đủ quyền hoặc tài khoản bị khóa
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '400':
+          description: Dữ liệu không hợp lệ
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Không tìm thấy tài nguyên
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '409':
+          description: Xung đột trạng thái hoặc dữ liệu
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema: *id001
+        description: MongoDB ObjectId.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                text:
+                  type: string
+                  minLength: 1
+                  maxLength: 1000
+              required:
+              - text
+  /admin/stats:
+    get:
+      summary: Thống kê người dùng, quán và khiếu nại
+      operationId: get_admin_stats
+      tags:
+      - Admin
+      description: newThisWeek là 7 ngày gần nhất; chưa có thống kê đơn/doanh thu ở endpoint này.
+      x-implementation-status: implemented
+      x-roles:
+      - admin
+      responses:
+        '200':
+          description: Thành công
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  users:
+                    type: object
+                    properties:
+                      total:
+                        type: integer
+                      byRole:
+                        type: object
+                        properties:
+                          customer:
+                            type: integer
+                          restaurant:
+                            type: integer
+                          driver:
+                            type: integer
+                          admin:
+                            type: integer
+                      locked:
+                        type: integer
+                      newThisWeek:
+                        type: integer
+                  restaurants:
+                    type: object
+                    properties:
+                      total:
+                        type: integer
+                      pending:
+                        type: integer
+                  complaints:
+                    type: object
+                    properties:
+                      open:
+                        type: integer
+                      inReview:
+                        type: integer
+        '500':
+          description: Lỗi server
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Thiếu hoặc sai JWT
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Không đủ quyền hoặc tài khoản bị khóa
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /admin/users:
+    get:
+      summary: Tìm/lọc/phân trang tài khoản
+      operationId: get_admin_users
+      tags:
+      - Admin
+      description: ''
+      x-implementation-status: implemented
+      x-roles:
+      - admin
+      responses:
+        '200':
+          description: Thành công
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  users:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/User'
+                  total:
+                    type: integer
+                  page:
+                    type: integer
+                  pages:
+                    type: integer
+        '500':
+          description: Lỗi server
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Thiếu hoặc sai JWT
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Không đủ quyền hoặc tài khoản bị khóa
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      parameters:
+      - &id007
+        name: page
+        in: query
+        required: false
+        schema:
+          type: integer
+          minimum: 1
+          default: 1
+        description: ''
+      - &id008
+        name: limit
+        in: query
+        required: false
+        schema:
+          type: integer
+          minimum: 1
+          maximum: 50
+          default: 10
+        description: ''
+      - &id009
+        name: q
+        in: query
+        required: false
+        schema:
+          type: string
+        description: ''
+      - name: role
+        in: query
+        required: false
+        schema: *id005
+        description: ''
+      - name: status
+        in: query
+        required: false
+        schema:
+          type: string
+          enum:
+          - active
+          - locked
+        description: ''
+  /admin/users/{userId}:
+    get:
+      summary: Chi tiết tài khoản và 20 audit mới nhất
+      operationId: get_admin_users_userId
+      tags:
+      - Admin
+      description: ''
+      x-implementation-status: implemented
+      x-roles:
+      - admin
+      responses:
+        '200':
+          description: Thành công
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  user:
+                    $ref: '#/components/schemas/User'
+                  audits:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/AuditLog'
+        '500':
+          description: Lỗi server
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Thiếu hoặc sai JWT
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Không đủ quyền hoặc tài khoản bị khóa
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Không tìm thấy tài nguyên
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      parameters:
+      - name: userId
+        in: path
+        required: true
+        schema: *id001
+        description: MongoDB ObjectId.
+  /admin/users/{userId}/lock:
+    patch:
+      summary: Khóa tài khoản
+      operationId: patch_admin_users_userId_lock
+      tags:
+      - Admin
+      description: Không tự khóa, không khóa admin. Audit USER_LOCK.
+      x-implementation-status: implemented
+      x-roles:
+      - admin
+      responses:
+        '200':
+          description: Thành công
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                  user:
+                    $ref: '#/components/schemas/User'
+        '500':
+          description: Lỗi server
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Thiếu hoặc sai JWT
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Không đủ quyền hoặc tài khoản bị khóa
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '400':
+          description: Dữ liệu không hợp lệ
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Không tìm thấy tài nguyên
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '409':
+          description: Xung đột trạng thái hoặc dữ liệu
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      parameters:
+      - name: userId
+        in: path
+        required: true
+        schema: *id001
+        description: MongoDB ObjectId.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: &id006
+              type: object
+              properties:
+                reason:
+                  type: string
+                  minLength: 5
+                  maxLength: 300
+              required:
+              - reason
+  /admin/users/{userId}/unlock:
+    patch:
+      summary: Mở khóa tài khoản
+      operationId: patch_admin_users_userId_unlock
+      tags:
+      - Admin
+      description: ''
+      x-implementation-status: implemented
+      x-roles:
+      - admin
+      responses:
+        '200':
+          description: Thành công
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                  user:
+                    $ref: '#/components/schemas/User'
+        '500':
+          description: Lỗi server
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Thiếu hoặc sai JWT
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Không đủ quyền hoặc tài khoản bị khóa
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '400':
+          description: Dữ liệu không hợp lệ
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Không tìm thấy tài nguyên
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '409':
+          description: Xung đột trạng thái hoặc dữ liệu
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      parameters:
+      - name: userId
+        in: path
+        required: true
+        schema: *id001
+        description: MongoDB ObjectId.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: *id006
+  /admin/users/{userId}/role:
+    patch:
+      summary: Đổi vai trò có audit
+      operationId: patch_admin_users_userId_role
+      tags:
+      - Admin
+      description: ''
+      x-implementation-status: implemented
+      x-roles:
+      - admin
+      responses:
+        '200':
+          description: Thành công
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                  user:
+                    $ref: '#/components/schemas/User'
+        '500':
+          description: Lỗi server
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Thiếu hoặc sai JWT
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Không đủ quyền hoặc tài khoản bị khóa
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '400':
+          description: Dữ liệu không hợp lệ
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Không tìm thấy tài nguyên
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      parameters:
+      - name: userId
+        in: path
+        required: true
+        schema: *id001
+        description: MongoDB ObjectId.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                role: *id005
+                reason:
+                  type: string
+                  minLength: 5
+                  maxLength: 300
+              required:
+              - role
+              - reason
+  /admin/restaurants:
+    get:
+      summary: Danh sách quán chờ/đã duyệt
+      operationId: get_admin_restaurants
+      tags:
+      - Admin
+      description: ''
+      x-implementation-status: implemented
+      x-roles:
+      - admin
+      responses:
+        '200':
+          description: Thành công
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  restaurants:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Restaurant'
+                  total:
+                    type: integer
+                  page:
+                    type: integer
+                  pages:
+                    type: integer
+        '500':
+          description: Lỗi server
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Thiếu hoặc sai JWT
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Không đủ quyền hoặc tài khoản bị khóa
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      parameters:
+      - *id007
+      - *id008
+      - *id009
+      - name: status
+        in: query
+        required: false
+        schema:
+          type: string
+          enum:
+          - pending
+          - approved
+          - rejected
+        description: ''
+  /admin/restaurants/{id}/review:
+    patch:
+      summary: Duyệt hoặc từ chối quán
+      operationId: patch_admin_restaurants_id_review
+      tags:
+      - Admin
+      description: ''
+      x-implementation-status: implemented
+      x-roles:
+      - admin
+      responses:
+        '200':
+          description: Thành công
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                  restaurant:
+                    $ref: '#/components/schemas/Restaurant'
+        '500':
+          description: Lỗi server
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Thiếu hoặc sai JWT
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Không đủ quyền hoặc tài khoản bị khóa
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '400':
+          description: Dữ liệu không hợp lệ
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Không tìm thấy tài nguyên
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '409':
+          description: Xung đột trạng thái hoặc dữ liệu
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema: *id001
+        description: MongoDB ObjectId.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                decision:
+                  type: string
+                  enum:
+                  - approve
+                  - reject
+                reason:
+                  type: string
+                  maxLength: 300
+                  description: reject bắt buộc từ 5 ký tự sau trim.
+              required:
+              - decision
+  /admin/complaints:
+    get:
+      summary: Danh sách khiếu nại toàn hệ thống
+      operationId: get_admin_complaints
+      tags:
+      - Admin
+      description: ''
+      x-implementation-status: implemented
+      x-roles:
+      - admin
+      responses:
+        '200':
+          description: Thành công
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  complaints:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        _id: *id001
+                        category:
+                          type: string
+                        subject:
+                          type: string
+                        status:
+                          type: string
+                        createdAt: *id004
+                        reporter:
+                          type: object
+                          properties:
+                            _id: *id001
+                            name:
+                              type: string
+                            email:
+                              type: string
+                            role: *id005
+                  total:
+                    type: integer
+                  page:
+                    type: integer
+                  pages:
+                    type: integer
+        '500':
+          description: Lỗi server
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Thiếu hoặc sai JWT
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Không đủ quyền hoặc tài khoản bị khóa
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      parameters:
+      - *id007
+      - *id008
+      - *id009
+      - name: status
+        in: query
+        required: false
+        schema:
+          type: string
+          enum:
+          - OPEN
+          - IN_REVIEW
+          - RESOLVED
+          - REJECTED
+        description: ''
+  /admin/complaints/{id}:
+    get:
+      summary: Chi tiết khiếu nại và người gửi
+      operationId: get_admin_complaints_id
+      tags:
+      - Admin
+      description: ''
+      x-implementation-status: implemented
+      x-roles:
+      - admin
+      responses:
+        '200':
+          description: Thành công
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  complaint:
+                    $ref: '#/components/schemas/Complaint'
+        '500':
+          description: Lỗi server
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Thiếu hoặc sai JWT
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Không đủ quyền hoặc tài khoản bị khóa
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Không tìm thấy tài nguyên
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema: *id001
+        description: MongoDB ObjectId.
+    patch:
+      summary: Phản hồi hoặc đóng khiếu nại
+      operationId: patch_admin_complaints_id
+      tags:
+      - Admin
+      description: ''
+      x-implementation-status: implemented
+      x-roles:
+      - admin
+      responses:
+        '200':
+          description: Thành công
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                  complaint:
+                    $ref: '#/components/schemas/Complaint'
+        '500':
+          description: Lỗi server
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Thiếu hoặc sai JWT
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Không đủ quyền hoặc tài khoản bị khóa
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '400':
+          description: Dữ liệu không hợp lệ
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Không tìm thấy tài nguyên
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '409':
+          description: Xung đột trạng thái hoặc dữ liệu
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema: *id001
+        description: MongoDB ObjectId.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                status:
+                  type: string
+                  enum:
+                  - IN_REVIEW
+                  - RESOLVED
+                  - REJECTED
+                resolution:
+                  type: string
+                  minLength: 5
+                  maxLength: 500
+                  description: Bắt buộc khi RESOLVED/REJECTED.
+                message:
+                  type: string
+                  maxLength: 1000
+              description: Cần status hoặc message không rỗng; chỉ sửa hồ sơ còn OPEN/IN_REVIEW.
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  schemas:
+    Error:
+      type: object
+      properties:
+        message:
+          type: string
+        locked:
+          type: boolean
+        reason:
+          type: string
+      required:
+      - message
+    Message:
+      type: object
+      properties:
+        message:
+          type: string
+      required:
+      - message
+    User:
+      type: object
+      properties:
+        _id: *id001
+        createdAt: *id004
+        updatedAt: *id004
+        name:
+          type: string
+        email:
+          type: string
+          format: email
+        phone:
+          type: string
+        role: *id005
+        status:
+          type: string
+          enum:
+          - active
+          - locked
+        gender:
+          type: string
+          enum:
+          - ''
+          - male
+          - female
+          - other
+        birthday:
+          type: string
+          format: date-time
+          nullable: true
+        address:
+          type: string
+        lockReason:
+          type: string
+        lockedAt:
+          type: string
+          format: date-time
+          nullable: true
+        lockedBy:
+          oneOf:
+          - *id001
+          - type: object
+            properties:
+              _id: *id001
+              name:
+                type: string
+          nullable: true
+    Restaurant:
+      type: object
+      properties:
+        _id: *id001
+        createdAt: *id004
+        updatedAt: *id004
+        owner:
+          oneOf:
+          - *id001
+          - type: object
+            properties:
+              _id: *id001
+              name:
+                type: string
+              email:
+                type: string
+              status:
+                type: string
+        name:
+          type: string
+        description:
+          type: string
+        address:
+          type: string
+        phone:
+          type: string
+        isOpen:
+          type: boolean
+        approvalStatus:
+          type: string
+          enum:
+          - pending
+          - approved
+          - rejected
+        rejectReason:
+          type: string
+        reviewedBy:
+          type: string
+          pattern: ^[0-9a-fA-F]{24}$
+          example: 507f1f77bcf86cd799439011
+          nullable: true
+        reviewedAt:
+          type: string
+          format: date-time
+          nullable: true
+    PublicRestaurant:
+      type: object
+      properties:
+        _id: *id001
+        name:
+          type: string
+        description:
+          type: string
+        address:
+          type: string
+        phone:
+          type: string
+        isOpen:
+          type: boolean
+    MenuItem:
+      type: object
+      properties:
+        _id: *id001
+        createdAt: *id004
+        updatedAt: *id004
+        restaurant: *id001
+        name:
+          type: string
+        description:
+          type: string
+        price: &id010
+          type: integer
+          minimum: 0
+          description: Số nguyên VND; không phải chuỗi trong API hiện tại.
+        category:
+          type: string
+        available:
+          type: boolean
+    Order:
+      type: object
+      properties:
+        _id: *id001
+        createdAt: *id004
+        updatedAt: *id004
+        restaurant: *id001
+        customer: *id001
+        requestKey:
+          type: string
+        items:
+          type: array
+          items:
+            type: object
+            properties:
+              _id: *id001
+              menuItem: *id001
+              name:
+                type: string
+              unitPrice: *id010
+              quantity:
+                type: integer
+                minimum: 1
+                maximum: 99
+        address:
+          type: string
+        phone:
+          type: string
+        note:
+          type: string
+        subtotal: *id010
+        commissionAmount: *id010
+        restaurantNetAmount: *id010
+        paymentMethod:
+          type: string
+          enum:
+          - COD
+        status: &id011
+          type: string
+          enum:
+          - PENDING_CONFIRMATION
+          - CONFIRMED
+          - REJECTED
+          - PREPARING
+          - READY_FOR_PICKUP
+          - PICKED_UP
+          - DELIVERING
+          - COMPLETED
+          - CANCELLED
+          - DELIVERY_FAILED
+        history:
+          type: array
+          items:
+            type: object
+            properties:
+              _id: *id001
+              status: *id011
+              actor: *id001
+              at: *id004
+              reason:
+                type: string
+        completedAt: *id004
+        codConfirmed:
+          type: boolean
+        settlement:
+          type: object
+          properties:
+            reference:
+              type: string
+            finalizedAt: *id004
+            paidAt: *id004
+    Complaint:
+      type: object
+      properties:
+        _id: *id001
+        createdAt: *id004
+        updatedAt: *id004
+        reporter:
+          oneOf:
+          - *id001
+          - type: object
+            properties:
+              _id: *id001
+              name:
+                type: string
+              email:
+                type: string
+              phone:
+                type: string
+              role: *id005
+        category:
+          type: string
+          enum:
+          - order
+          - payment
+          - restaurant
+          - driver
+          - app
+          - other
+        subject:
+          type: string
+        description:
+          type: string
+        orderCode:
+          type: string
+        status:
+          type: string
+          enum:
+          - OPEN
+          - IN_REVIEW
+          - RESOLVED
+          - REJECTED
+        assignedAdmin:
+          oneOf:
+          - *id001
+          - type: object
+            properties:
+              _id: *id001
+              name:
+                type: string
+          nullable: true
+        resolution:
+          type: string
+        resolvedAt:
+          type: string
+          format: date-time
+          nullable: true
+        messages:
+          type: array
+          items:
+            type: object
+            properties:
+              _id: *id001
+              sender:
+                oneOf:
+                - *id001
+                - type: object
+                  properties:
+                    _id: *id001
+                    name:
+                      type: string
+              senderRole: *id005
+              text:
+                type: string
+              createdAt: *id004
+    AuditLog:
+      type: object
+      properties:
+        _id: *id001
+        actor:
+          oneOf:
+          - *id001
+          - type: object
+            properties:
+              _id: *id001
+              name:
+                type: string
+        action:
+          type: string
+        entityType:
+          type: string
+        entityId: *id001
+        before:
+          type: string
+        after:
+          type: string
+        reason:
+          type: string
+        createdAt: *id004
+    RegisterRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 2
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+          minLength: 6
+          format: password
+        phone:
+          type: string
+          pattern: ^[0-9]{9,11}$
+        role:
+          type: string
+          enum: *id012
+          default: customer
+          description: Hiện controller chấp nhận cả admin. Đây là sai lệch bảo mật cần sửa trước triển khai thật;
+            thiết kế đích chỉ đăng ký customer công khai.
+      required:
+      - name
+      - email
+      - password
+    LoginRequest:
+      type: object
+      properties:
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+          format: password
+      required:
+      - email
+      - password
+    ProfileUpdate:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 2
+        phone:
+          type: string
+          description: Rỗng hoặc 9–11 chữ số.
+        gender:
+          type: string
+          enum:
+          - ''
+          - male
+          - female
+          - other
+        birthday:
+          type: string
+          nullable: true
+          description: Ngày không ở tương lai; null/chuỗi rỗng để xóa.
+        address:
+          type: string
+          maxLength: 200
+    RestaurantUpdate:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 2
+        address:
+          type: string
+          minLength: 5
+        description:
+          type: string
+          maxLength: 500
+        phone:
+          type: string
+          description: Rỗng hoặc 9–11 chữ số.
+        isOpen:
+          type: boolean
+      description: Tạo mới cần name/address; cập nhật chỉ gửi trường muốn đổi. Controller hiện ép kiểu isOpen bằng
+        Boolean.
+    MenuCreate:
+      type: object
+      properties: &id013
+        name:
+          type: string
+          minLength: 2
+        price:
+          type: integer
+          minimum: 0
+          description: Số nguyên VND; không phải chuỗi trong API hiện tại.
+          maximum: 100000000
+        description:
+          type: string
+          maxLength: 300
+        category:
+          type: string
+          maxLength: 50
+        available:
+          type: boolean
+      required:
+      - name
+      - price
+    OrderCreate:
+      type: object
+      properties:
+        restaurantId: *id001
+        items:
+          type: array
+          items:
+            type: object
+            properties:
+              menuItem: *id001
+              quantity:
+                type: integer
+                minimum: 1
+                maximum: 99
+            required:
+            - menuItem
+            - quantity
+          minItems: 1
+          maxItems: 50
+          description: Không lặp menuItem; chỉ món còn hàng thuộc cùng quán.
+        address:
+          type: string
+          minLength: 5
+          maxLength: 300
+        phone:
+          type: string
+          pattern: ^[0-9]{9,11}$
+        note:
+          type: string
+          maxLength: 500
+          default: ''
+      required:
+      - restaurantId
+      - items
+      - address
+      - phone
+    StatusUpdate:
+      type: object
+      properties:
+        status:
+          type: string
+          enum:
+          - CONFIRMED
+          - REJECTED
+          - PREPARING
+          - READY_FOR_PICKUP
+        reason:
+          type: string
+          minLength: 1
+          maxLength: 500
+          description: Bắt buộc không rỗng sau trim khi REJECTED.
+      required:
+      - status
+    ComplaintCreate:
+      type: object
+      properties:
+        category:
+          type: string
+          enum:
+          - order
+          - payment
+          - restaurant
+          - driver
+          - app
+          - other
+          default: other
+        subject:
+          type: string
+          minLength: 5
+          maxLength: 120
+        description:
+          type: string
+          minLength: 10
+          maxLength: 1000
+        orderCode:
+          type: string
+          maxLength: 30
+          description: Mã nhập tay, chưa phải khóa ngoại liên kết đơn.
+      required:
+      - subject
+      - description
+    Report:
+      type: object
+      properties:
+        totals:
+          type: object
+          properties:
+            count:
+              type: integer
+              minimum: 0
+            subtotal: *id010
+            commissionAmount: *id010
+            restaurantNetAmount: *id010
+        orders:
+          type: array
+          items:
+            $ref: '#/components/schemas/Order'
+        settlements:
+          type: array
+          items:
+            type: object
+            properties:
+              reference:
+                type: string
+              finalizedAt: *id004
+              amount: *id010
+              orders:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    id: *id001
+                    amount: *id010
+                    paidAt:
+                      type: string
+                      format: date-time
+                      nullable: true
+    MenuUpdate:
+      type: object
+      properties: *id013

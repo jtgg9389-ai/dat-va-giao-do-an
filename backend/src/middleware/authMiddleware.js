@@ -24,6 +24,7 @@ exports.verifyToken = async (req, res, next) => {
     if (user.status === 'locked') {
       return res.status(403).json({ message: 'Tài khoản đã bị khóa', locked: true, reason: user.lockReason });
     }
+    req.authExpiresAt = decoded.exp * 1000;
     req.user = { id: user._id.toString(), role: user.role, email: user.email };
     next();
   } catch (err) {

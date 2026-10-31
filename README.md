@@ -22,6 +22,9 @@ FR-11: Nhận thông báo đơn hàng mới theo thời gian thực
 FR-12: Xác nhận hoặc từ chối đơn hàng
 FR-13: Cập nhật trạng thái chế biến (đang làm → sẵn sàng giao)
 FR-14: Xem báo cáo doanh thu, lịch sử đối soát
+
+Hướng dẫn sử dụng, API, kiểm thử và phạm vi phần nhà hàng hiện đã triển khai: [docs/restaurant.md](docs/restaurant.md).
+
 1.3. Tài xế (Driver)
 FR-15: Bật/tắt trạng thái sẵn sàng nhận đơn (online/offline)
 FR-16: Nhận thông báo cuốc giao hàng, chấp nhận/từ chối trong thời gian giới hạn
@@ -568,6 +571,10 @@ Nếu nhóm chỉ hỗ trợ thanh toán toàn bộ khoản đối soát trong M
 - Tiền đã thu, hoàn đang chờ/hoàn xong và khoản điều chỉnh là các chỉ tiêu riêng.
 
 ## 13. Hợp đồng REST API đề xuất
+
+Tài liệu chi tiết: [Thiết kế API toàn ứng dụng](docs/api-design.md) và [OpenAPI các route đang có](docs/openapi.yaml). API hiện tại dùng `/api` (Express/MongoDB); `/api/v1`, envelope và các endpoint dưới đây là **thiết kế đích, chưa đồng nghĩa đã triển khai**.
+
+**Xem Swagger trực tiếp:** trong `backend` chạy `npm ci` rồi `npm run dev`; sau khi database kết nối, mở `http://localhost:5000/api-docs/`. Trang có **Authorize**, **Try it out** và **Execute**; hướng dẫn chi tiết trong [tài liệu API](docs/api-design.md#xem-trực-tiếp-trong-backend-bằng-swagger-ui).
 
 ### 13.1. Quy ước chung
 

@@ -325,3 +325,15 @@
     .rs-menu-item { flex-wrap: wrap; }
     .rs-menu-actions { width: 100%; }
   }
+.rs-toolbar { display: flex; flex-wrap: wrap; align-items: end; gap: 12px; margin: 16px 0; }
+.rs-toolbar select { padding: 8px; margin-left: 8px; max-width: 100%; }
+.rs-order { border-top: 1px solid #e5e0d6; padding: 16px 0; overflow-wrap: anywhere; }
+.rs-order h3 { font-size: 16px; margin-top: 0; }
+.rs-order details { margin-top: 14px; }
+.rs-order summary { cursor: pointer; }
+.rs-reject { margin-top: 16px; display: grid; gap: 12px; }
+.rs-metrics { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; }
+.rs-metrics div { padding: 14px; background: #fff1e6; border-radius: 10px; }
+.rs-metrics dt { font-size: 13px; }
+.rs-metrics dd { font-weight: 700; margin: 8px 0 0; }
+.rs-actions { flex-wrap: wrap; }
