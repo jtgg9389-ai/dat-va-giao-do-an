@@ -346,3 +346,6 @@
 .flow-admin { display: grid; gap: 20px; }
 .rs-card select { padding: 9px; color: #1a1a2e; background: white; border: 1px solid #d6d0c4; border-radius: 8px; }
 .rs-card { overflow-wrap: anywhere; }
+
+.role-switcher { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; padding: 10px 24px; background: #fff1e6; color: #57534e; border-bottom: 1px solid #eed7c7; font: 14px -apple-system, 'Segoe UI', sans-serif; }
+.role-switcher select { margin-left: 8px; padding: 8px 12px; background: #fff; color: #1a1a2e; border: 1px solid #d6d0c4; border-radius: 8px; }

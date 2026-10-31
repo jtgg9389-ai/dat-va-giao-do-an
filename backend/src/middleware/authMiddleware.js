@@ -1,4 +1,5 @@
 const jwt = require('jsonwebtoken');
+const { rolesOf } = require('../utils/accountRoles');
 const User = require('../models/User');
 
 exports.verifyToken = async (req, res, next) => {
@@ -17,15 +18,19 @@ exports.verifyToken = async (req, res, next) => {
   }
 
   try {
-    const user = await User.findById(decoded.id).select('email role status lockReason');
+    const user = await User.findById(decoded.id).select('email role roles activeRole status lockReason');
     if (!user) {
       return res.status(401).json({ message: 'Tài khoản không còn tồn tại' });
     }
     if (user.status === 'locked') {
       return res.status(403).json({ message: 'Tài khoản đã bị khóa', locked: true, reason: user.lockReason });
     }
+    const activeRole = decoded.activeRole || user.role;
+    if (!rolesOf(user).includes(activeRole) || (user.activeRole && user.activeRole !== activeRole)) {
+      return res.status(401).json({ message: 'Chế độ tài khoản đã đổi. Hãy tải lại trang hoặc đăng nhập lại.' });
+    }
     req.authExpiresAt = decoded.exp * 1000;
-    req.user = { id: user._id.toString(), role: user.role, email: user.email };
+    req.user = { id: user._id.toString(), role: activeRole, email: user.email };
     next();
   } catch (err) {
     console.error(err);

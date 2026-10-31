@@ -69,8 +69,8 @@ exports.stream = async (req, res) => {
   const send = async () => {
     try {
       // Recheck account access during long-lived connections.
-      const owner = await User.findById(req.user.id).select('role status');
-      if (!owner || owner.status === 'locked' || owner.role !== 'restaurant' || req.authExpiresAt <= Date.now()) return res.end();
+      const owner = await User.findById(req.user.id).select('role roles activeRole status');
+      if (!owner || owner.status === 'locked' || !require('../utils/accountRoles').hasRole(owner, 'restaurant') || (owner.activeRole && owner.activeRole !== 'restaurant') || req.authExpiresAt <= Date.now()) return res.end();
       const orders = await Order.find({ restaurant: r._id, status: { $ne: 'PENDING_PAYMENT' } }).sort({ createdAt: -1 }).limit(200).lean();
       const payload = JSON.stringify({ orders });
       if (!closed) { if (last !== payload) { res.write(`data: ${payload}\n\n`); last = payload; } else res.write(': heartbeat\n\n'); }

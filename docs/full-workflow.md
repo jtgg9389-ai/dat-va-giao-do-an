@@ -45,6 +45,18 @@ node scripts/create-admin.js
 
 Script không ghi đè/nâng quyền tài khoản có sẵn, không in mật khẩu. Xóa ADMIN_PASSWORD khỏi cấu hình sau khi tạo xong. Không dùng script này để thay mật khẩu tài khoản cũ.
 
+## Một tài khoản dùng nhiều chế độ
+
+Thanh **Đang dùng với vai trò** ở đầu trang cho phép chọn **Khách hàng / Tài xế / Nhà hàng** mà không đăng xuất. Chuyển sang khách hàng để tự đặt món, rồi quay lại tài xế hoặc quán bằng cùng email. Không tạo tài khoản thứ hai và không thay chủ sở hữu dữ liệu cũ.
+
+- Hồ sơ tài xế/nhà hàng, lịch sử đơn, điểm đánh giá và kết quả duyệt được giữ nguyên. Tài xế đã duyệt không phải duyệt lại chỉ vì chuyển chế độ.
+- Lần đầu kích hoạt tài xế có hồ sơ pending; lần đầu tạo quán vẫn pending. **Admin chỉ cần duyệt ban đầu**, trừ khi chủ động thu hồi duyệt. Không có nút tự chuyển thành admin hay tự duyệt đối tác.
+- Rời chế độ tài xế tắt nhận cuốc mới. Nếu đang có cuốc active, hệ thống chặn chuyển: giao xong hoặc nhờ admin xử lý trước. Khi quay lại tài xế, bật GPS/online để nhận cuốc tiếp.
+- Không đề nghị tài xế giao đơn do chính tài khoản đó đặt.
+- Backend giữ `User.role` làm loại tài khoản gốc, `roles` ghi các chế độ đã kích hoạt, `activeRole` là chế độ hiện tại. JWT mới có activeRole; middleware kiểm tra với MongoDB. Token khác chế độ hiện tại bị từ chối; không chỉ đổi nhãn ở frontend.
+- Tab khác trong cùng trình duyệt tự tải lại khi chế độ thay đổi. Socket/nhịp GPS cũ được đóng khi chuyển trang. Đăng nhập lần sau nhớ chế độ đã chọn.
+- Admin đổi vai trò của người khác là thao tác quản trị khác với nút chuyển chế độ: đặt lại chế độ/quyền đối tác và yêu cầu duyệt lại những hồ sơ không còn tương ứng. Khóa tài khoản vẫn khóa toàn bộ chế độ.
+
 ## Các màn hình và chức năng
 
 | Vai trò | Màn hình | Chức năng |
@@ -136,6 +148,6 @@ npm run build
 npm run lint
 ```
 
-17 nhóm kiểm thử tích hợp đã chạy đạt, gồm API/phân quyền/trạng thái/tiền/GPS/outbox/complaint và ảnh món. Kiểm tra trình duyệt luồng bốn vai trò dùng Chromium và GPS trình duyệt giả lập cho test; tile bản đồ được mock, do đó không khẳng định đã đo độ sẵn sàng hoặc độ trễ mạng OpenStreetMap thật. Ảnh món có kiểm tra chọn/preview/lưu/reload/khách xem/bỏ ảnh và chặn SVG.
+20 nhóm kiểm thử tích hợp đã chạy đạt, gồm API/phân quyền/trạng thái/tiền/GPS/outbox/complaint và ảnh món. Kiểm tra trình duyệt luồng bốn vai trò dùng Chromium và GPS trình duyệt giả lập cho test; tile bản đồ được mock, do đó không khẳng định đã đo độ sẵn sàng hoặc độ trễ mạng OpenStreetMap thật. Ảnh món có kiểm tra chọn/preview/lưu/reload/khách xem/bỏ ảnh và chặn SVG.
 
 Giới hạn: chưa PostgreSQL/Redis; giỏ local theo thiết bị; list có giới hạn (200 đơn, 100 notifications/reviews, 500 khoản đối soát); không có push/email ngoài ứng dụng; không có lưu lịch sử GPS dài hạn, routing đường đi thực, background geolocation khi đóng trang, sandbox payment gateway ngoài, transaction toàn kỳ, hoặc API version v1 chuẩn hóa như bản thiết kế tương lai. Đây là các khác biệt kỹ thuật, không được ghi là đã triển khai.

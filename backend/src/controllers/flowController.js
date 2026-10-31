@@ -98,6 +98,14 @@ exports.offer = async (req, res) => {
   try {
     const order = await Order.findOneAndUpdate(filter, { $set: { 'offers.$.status': accept ? 'ACCEPTED' : 'REJECTED', ...(accept ? { driver: req.user.id, dispatchStatus: 'ASSIGNED' } : { nextDispatchAt: new Date() }) }, $push: { outbox: flow.outbox(accept ? 'Tài xế đã nhận giao đơn' : 'Tài xế từ chối cuốc, đang tìm người khác') } }, { new: true });
     if (!order) { const retry = accept ? await Order.findOne({ _id: req.params.id, driver: req.user.id, status: { $in: flow.ACTIVE } }) : null; if (retry) return res.json({ order: safeOrder(retry) }); return fail(res, 409, 'Cuốc đã hết hạn hoặc đã có người nhận'); }
+    if (accept) {
+      const stillOnline = await Driver.exists({ user: req.user.id, online: true, approvalStatus: 'approved' });
+      const account = await User.findById(req.user.id).select('activeRole status role roles');
+      if (!stillOnline || !account || account.status === 'locked' || (account.activeRole && account.activeRole !== 'driver') || !require('../utils/accountRoles').hasRole(account, 'driver')) {
+        await Order.updateOne({ _id: order._id, driver: req.user.id, status: { $in: flow.ACTIVE } }, { $unset: { driver: 1 }, $set: { dispatchStatus: 'WAITING', nextDispatchAt: new Date(), 'offers.$[offer].status': 'REJECTED' } }, { arrayFilters: [{ 'offer.driver': new mongoose.Types.ObjectId(req.user.id), 'offer.status': 'ACCEPTED' }] });
+        return fail(res, 409, 'Bạn đã chuyển chế độ hoặc offline trong lúc nhận cuốc; cuốc được trả lại hệ thống');
+      }
+    }
     res.json(accept ? { order: safeOrder(order) } : { message: 'Đã từ chối cuốc' });
   } catch (e) { if (e.code === 11000) return fail(res, 409, 'Bạn đang có đơn khác chưa giao xong'); throw e; }
 };

@@ -1,4 +1,5 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import RoleSwitcher from './components/RoleSwitcher';
 import Orders, { OrderDetail } from './pages/Orders';
 import DriverDashboard from './pages/DriverDashboard';
 import AdminOperations from './pages/AdminOperations';
@@ -27,6 +28,7 @@ function RequireRole({ roles, children }) {
 function App() {
   return (
     <BrowserRouter>
+      <RoleSwitcher />
       <Routes>
         <Route path="/" element={<Home />} />
         <Route path="/orders" element={<RequireRole roles={['customer']}><Orders /></RequireRole>} />

@@ -2,7 +2,7 @@
 
 ## Tài liệu và phiên bản
 
-- [OpenAPI hiện tại](openapi.yaml): 57 thao tác HTTP đã có route trong Express, gồm request/response, quyền và mã lỗi. Swagger tải trực tiếp từ tệp này.
+- [OpenAPI hiện tại](openapi.yaml): 58 thao tác HTTP đã có route trong Express, gồm request/response, quyền và mã lỗi. Swagger tải trực tiếp từ tệp này.
 - [Luồng vận hành, bất biến và giới hạn](full-workflow.md): thiết kế và cách chạy toàn bộ FR-1 đến FR-26 trên MongoDB theo lựa chọn hiện tại.
 - README mục 13–14: kiến trúc đích `/api/v1`/PostgreSQL/Redis; một số tên route/envelope/loại dữ liệu khác với API `/api` hiện tại. Không xem bảng đề xuất là bằng chứng API đó đã tồn tại.
 
@@ -14,7 +14,7 @@ API hiện tại giữ đường dẫn `/api` để frontend và các tài kho�
 | --- | --- |
 | Server | `http://localhost:5000/api`; Swagger dùng `/api` tương đối để tự theo host/port |
 | Xác thực | `Authorization: Bearer <token>`; `/auth/register`, `/auth/login` public; Swagger có nút Authorize |
-| Vai trò | customer, restaurant, driver, admin; kiểm tra lại user trong MongoDB mỗi request |
+| Vai trò | customer, restaurant, driver, admin; kiểm tra activeRole của JWT với các chế độ được phép và trạng thái user trong MongoDB mỗi request |
 | Dữ liệu | JSON, ID ObjectId 24 hex, VND number nguyên, thời điểm ISO UTC; lọc ngày UTC+7 |
 | Response | `{user}`, `{orders}`, `{order}`, `{profile}`, `{message, ...}` theo từng endpoint; chưa envelope v1 |
 | Lỗi | `{message}` tiếng Việt; tài khoản khóa thêm locked/reason; không trả stack trace |
@@ -38,6 +38,7 @@ API hiện tại giữ đường dẫn `/api` để frontend và các tài kho�
 | Báo cáo nhà hàng | GET `/restaurants/mine/report?from=...&to=...` | Chủ quán |
 | Tài xế | GET `/driver/profile`, PUT availability, POST location/offers, PATCH jobs status, POST issue, GET earnings | Driver |
 | Thông báo | GET `/notifications`, POST `/notifications/{id}/read` | Chủ thông báo |
+| Chuyển chế độ | POST `/auth/switch-role` với `{role: customer/driver/restaurant}` | Cùng tài khoản; giữ duyệt đối tác; không cho admin; đang có cuốc trả 409 |
 | Đối soát | GET `/settlements` | Nhà hàng/tài xế xem của mình; admin xem toàn bộ |
 | Admin hiện có | users, restaurants review, stats, complaints | Admin |
 | Vận hành | GET `/admin/drivers`, PATCH driver review, GET `/admin/orders`, POST order action | Admin |

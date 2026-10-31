@@ -167,3 +167,46 @@ test('first-time driver profile can be created without GPS and cannot go online 
   assert.equal((await request(`/admin/drivers/${user.id}/review`, admin, 'PATCH', { status: 'approved', reason: 'Hồ sơ đã kiểm tra hợp lệ' })).status, 200);
   assert.equal((await request('/driver/availability', user, 'PUT', { online: true })).status, 200);
 });
+test('one identity switches modes while approvals and records persist; stale tokens/admin escalation are rejected', async () => {
+  const user = await User.create({ name: 'Multi role', email: 'multi@flow.test', password: 'unused', role: 'driver' });
+  await Driver.create({ user: user._id, approvalStatus: 'approved', online: true, location: { type:'Point', coordinates:[106.69,10.77] }, locationAt:new Date() });
+  let result = await request('/auth/switch-role', user, 'POST', { role: 'customer' }); assert.equal(result.status,200); assert.equal(result.data.user.id,user.id); assert.equal(result.data.user.role,'customer'); assert.equal(result.data.user.accountRole,'driver');
+  assert.equal((await Driver.findOne({user:user._id})).approvalStatus,'approved'); assert.equal((await Driver.findOne({user:user._id})).online,false);
+  assert.equal((await request('/driver/profile',user)).status,401);
+  let bearer=result.data.token;
+  async function scoped(path, method='GET', body) { const r=await fetch(base+'/api'+path,{method,headers:{'Content-Type':'application/json',Authorization:'Bearer '+bearer},body:body===undefined?undefined:JSON.stringify(body)});return {status:r.status,data:await r.json()}; }
+  assert.equal((await scoped('/restaurants')).status,200); assert.equal((await scoped('/driver/profile')).status,403); assert.equal((await scoped('/admin/drivers')).status,403);
+  assert.equal((await scoped('/auth/switch-role','POST',{role:'admin'})).status,400);
+  result=await scoped('/auth/switch-role','POST',{role:'restaurant'});assert.equal(result.status,200);bearer=result.data.token;
+  result=await scoped('/restaurants/mine','PUT',{name:'Quán đa vai trò',address:'123 Địa chỉ thử',location:gps});assert.equal(result.status,200);assert.equal(result.data.restaurant.approvalStatus,'pending');
+  const restaurantId=result.data.restaurant._id;
+  result=await scoped('/auth/switch-role','POST',{role:'driver'});assert.equal(result.status,200);bearer=result.data.token;
+  result=await scoped('/driver/profile');assert.equal(result.status,200);assert.equal(result.data.profile.approvalStatus,'approved');
+  assert.equal((await User.findById(user._id)).role,'driver');assert.ok(await Restaurant.exists({_id:restaurantId,owner:user._id}));
+  assert.equal((await request('/auth/switch-role',admin,'POST',{role:'customer'})).status,403);
+});
+test('drivers cannot leave an active delivery; admin role revocation invalidates partner approval',async()=>{
+  const user=await User.create({name:'Busy role',email:'busy-role@flow.test',password:'unused',role:'driver'});
+  await Driver.create({user:user._id,approvalStatus:'approved',online:true,location:{type:'Point',coordinates:[106.69,10.77]},locationAt:new Date()});
+  const o=await create();await prepare(o);await Order.updateOne({_id:o._id},{driver:user._id});
+  assert.equal((await request('/auth/switch-role',user,'POST',{role:'customer'})).status,409);
+  assert.equal((await User.findById(user._id)).activeRole,undefined);
+  assert.equal((await request(`/admin/users/${user.id}/role`,admin,'PATCH',{role:'customer',reason:'Thu hồi quyền đối tác để kiểm tra'})).status,200);
+  assert.equal((await Driver.findOne({user:user._id})).approvalStatus,'pending');
+  assert.equal((await request('/driver/profile',user)).status,403);
+  const oldToken=jwt.sign({id:user.id,activeRole:'driver'},process.env.JWT_SECRET,{expiresIn:'1h'});
+  assert.equal((await fetch(base+'/api/driver/profile',{headers:{Authorization:'Bearer '+oldToken}})).status,401);
+  await Order.updateOne({_id:o._id},{status:'CANCELLED'});
+});
+test('racing mode switch and offer acceptance never leaves a customer session assigned to a job',async()=>{
+  for(let i=0;i<4;i++){
+    const user=await User.create({name:'Race role',email:`role-race-${i}@flow.test`,password:'unused',role:'driver'});
+    await Driver.create({user:user._id,approvalStatus:'approved',online:true,location:{type:'Point',coordinates:[106.69,10.77]},locationAt:new Date()});
+    const o=await create();await prepare(o);await Order.updateOne({_id:o._id},{$push:{offers:{driver:user._id,status:'PENDING',expiresAt:new Date(Date.now()+30000)}}});
+    const results=await Promise.all([request('/auth/switch-role',user,'POST',{role:'customer'}),request(`/driver/offers/${o._id}`,user,'POST',{action:'accept'})]);
+    const account=await User.findById(user._id),order=await Order.findById(o._id);
+    assert.ok(results.every(r=>[200,401,409].includes(r.status)),JSON.stringify(results));
+    if(account.activeRole==='customer')assert.ok(!order.driver,'Customer mode must not retain an accepted driver assignment');
+    await Order.updateOne({_id:o._id},{status:'CANCELLED'});
+  }
+});

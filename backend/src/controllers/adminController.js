@@ -1,4 +1,6 @@
 const mongoose = require('mongoose');
+const Driver = require('../models/DriverProfile');
+const Restaurant = require('../models/Restaurant');
 const User = require('../models/User');
 const AuditLog = require('../models/AuditLog');
 const { logAudit } = require('../utils/audit');
@@ -188,8 +190,10 @@ exports.updateUserRole = async (req, res) => {
       return res.status(400).json({ message: 'Người dùng đã có vai trò này' });
     }
 
-    const updated = await User.findByIdAndUpdate(userId, { $set: { role } }, { new: true }).select('-password');
+    const updated = await User.findByIdAndUpdate(userId, { $set: { role, activeRole: role, roles: role === 'admin' ? [] : [role] } }, { new: true }).select('-password');
 
+    if (role !== 'driver') await Driver.updateOne({ user: userId }, { $set: { online: false, approvalStatus: 'pending' } });
+    if (role !== 'restaurant') await Restaurant.updateOne({ owner: userId }, { $set: { approvalStatus: 'pending' } });
     await logAudit({
       actor: req.user.id, action: 'USER_ROLE_CHANGE', entityType: 'user', entityId: userId,
       before: target.role, after: role, reason,

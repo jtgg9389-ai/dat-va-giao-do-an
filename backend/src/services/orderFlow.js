@@ -1,3 +1,4 @@
+const { hasRole } = require('../utils/accountRoles');
 const crypto = require('node:crypto');
 const Order = require('../models/Order');
 const User = require('../models/User');
@@ -41,8 +42,8 @@ async function dispatch(order) {
   await Order.updateOne({ _id: order._id }, { $set: { 'offers.$[offer].status': 'EXPIRED' } }, { arrayFilters: [{ 'offer.status': 'PENDING', 'offer.expiresAt': { $lte: now } }] });
   const rejected = order.offers.map(o => o.driver);
   const busy = await Order.distinct('driver', { status: { $in: ACTIVE }, driver: { $exists: true } });
-  const locked = await User.distinct('_id', { $or: [{ status: 'locked' }, { role: { $ne: 'driver' } }] });
-  const query = { approvalStatus: 'approved', online: true, user: { $nin: [...busy, ...locked, ...rejected] }, locationAt: { $gte: new Date(Date.now() - 60000) } };
+  const locked = await User.distinct('_id', { $or: [{ status: 'locked' }, { role: 'admin' }, { activeRole: { $exists: true, $ne: 'driver' } }] });
+  const query = { approvalStatus: 'approved', online: true, user: { $nin: [order.customer, ...busy, ...locked, ...rejected] }, locationAt: { $gte: new Date(Date.now() - 60000) } };
   if (!coordinates(order.restaurantLocation)) {
     await Order.updateOne({ _id: order._id, driver: { $exists: false } }, { $set: { dispatchStatus: 'NO_DRIVER', nextDispatchAt: new Date(Date.now() + 30000) } }); return;
   }
@@ -77,8 +78,8 @@ async function tick() {
     const assigned = await Order.find({ status: { $in: ACTIVE }, driver: { $exists: true } }).limit(100);
     for (const o of assigned) {
       const driver = await Driver.findOne({ user: o.driver });
-      const user = await User.findById(o.driver).select('role status');
-      const stale = !driver?.locationAt || driver.locationAt < new Date(Date.now() - 120000) || user?.status === 'locked' || user?.role !== 'driver' || driver.approvalStatus !== 'approved';
+      const user = await User.findById(o.driver).select('role roles activeRole status');
+      const stale = !driver?.locationAt || driver.locationAt < new Date(Date.now() - 120000) || user?.status === 'locked' || !hasRole(user, 'driver') || (user?.activeRole && user.activeRole !== 'driver') || driver.approvalStatus !== 'approved';
       if (!stale) continue;
       if (['CONFIRMED', 'PREPARING', 'READY_FOR_PICKUP'].includes(o.status)) {
         await Order.updateOne({ _id: o._id, driver: o.driver, status: { $in: ['CONFIRMED', 'PREPARING', 'READY_FOR_PICKUP'] } }, { $unset: { driver: 1 }, $set: { dispatchStatus: 'WAITING', nextDispatchAt: new Date() }, $push: { outbox: outbox('Tài xế mất kết nối trước lấy hàng; đang tìm người khác') } });
