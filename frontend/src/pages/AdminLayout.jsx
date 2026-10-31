@@ -5,6 +5,7 @@ const tabs = [
   { to: '/admin', label: 'Tổng quan', end: true },
   { to: '/admin/users', label: 'Tài khoản' },
   { to: '/admin/partners', label: 'Nhà hàng' },
+  { to: '/admin/operations', label: 'Vận hành & đối soát' },
   { to: '/admin/complaints', label: 'Khiếu nại' },
 ];
 

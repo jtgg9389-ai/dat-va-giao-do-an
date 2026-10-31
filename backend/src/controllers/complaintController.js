@@ -1,4 +1,6 @@
 const mongoose = require('mongoose');
+const Order = require('../models/Order');
+const Restaurant = require('../models/Restaurant');
 const Complaint = require('../models/Complaint');
 
 const OPEN_STATES = ['OPEN', 'IN_REVIEW'];
@@ -39,7 +41,16 @@ exports.createComplaint = async (req, res) => {
       return res.status(429).json({ message: `Bạn đang có ${MAX_OPEN} khiếu nại chưa xử lý xong. Vui lòng chờ phản hồi trước khi gửi thêm.` });
     }
 
-    const complaint = await Complaint.create({ reporter: req.user.id, category, subject, description, orderCode });
+    const orderId = body.orderId || (mongoose.isValidObjectId(orderCode) ? orderCode : null);
+    let order;
+    if (orderId) {
+      if (!mongoose.isValidObjectId(orderId)) return res.status(400).json({ message: 'Mã đơn không hợp lệ' });
+      order = await Order.findById(orderId);
+      const ownRestaurant = req.user.role === 'restaurant' && order && await Restaurant.exists({ _id: order.restaurant, owner: req.user.id });
+      if (!order || (String(order.customer) !== req.user.id && String(order.driver) !== req.user.id && !ownRestaurant)) return res.status(404).json({ message: 'Không tìm thấy đơn thuộc quyền của bạn' });
+    }
+    const complaint = await Complaint.create({ reporter: req.user.id, category, subject, description, orderCode, ...(order ? { order: order._id } : {}) });
+    if (order && category === 'payment') await Order.updateOne({ _id: order._id, 'settlement.reference': { $exists: false } }, { $set: { settlementHold: true } });
     res.status(201).json({ message: 'Đã gửi khiếu nại. Chúng tôi sẽ phản hồi sớm nhất có thể.', complaint });
   } catch (err) {
     return serverError(res, err);

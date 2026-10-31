@@ -11,9 +11,9 @@ const isValidEmail = (email) => {
 // ĐĂNG KÝ
 exports.register = async (req, res) => {
   try {
-    const { name, email, password, phone, role } = req.body;
+    const { name, email, password, phone, role } = req.body || {};
 
-    if (!name || !email || !password) {
+    if (typeof name !== 'string' || typeof email !== 'string' || typeof password !== 'string' || !name || !email || !password) {
       return res.status(400).json({ message: 'Vui lòng nhập đầy đủ họ tên, email và mật khẩu' });
     }
     if (name.trim().length < 2) {
@@ -26,7 +26,7 @@ exports.register = async (req, res) => {
       return res.status(400).json({ message: 'Mật khẩu phải có ít nhất 6 ký tự' });
     }
 
-    const validRoles = ['customer', 'restaurant', 'driver', 'admin'];
+    const validRoles = ['customer', 'restaurant', 'driver'];
     if (role && !validRoles.includes(role)) {
       return res.status(400).json({ message: 'Vai trò không hợp lệ' });
     }
@@ -59,9 +59,9 @@ exports.register = async (req, res) => {
 // ĐĂNG NHẬP
 exports.login = async (req, res) => {
   try {
-    const { email, password } = req.body;
+    const { email, password } = req.body || {};
 
-    if (!email || !password) {
+    if (typeof email !== 'string' || typeof password !== 'string' || !email || !password) {
       return res.status(400).json({ message: 'Vui lòng nhập email và mật khẩu' });
     }
 
@@ -113,7 +113,7 @@ exports.getProfile = async (req, res) => {
 // CẬP NHẬT THÔNG TIN CÁ NHÂN (chỉ cập nhật các trường được gửi lên)
 exports.updateProfile = async (req, res) => {
   try {
-    const { name, phone, gender, birthday, address } = req.body;
+    const { name, phone, gender, birthday, address } = req.body || {};
     const update = {};
 
     if (name !== undefined) {
@@ -167,7 +167,7 @@ exports.updateProfile = async (req, res) => {
 // ĐỔI MẬT KHẨU
 exports.changePassword = async (req, res) => {
   try {
-    const { currentPassword, newPassword } = req.body;
+    const { currentPassword, newPassword } = req.body || {};
 
     if (!currentPassword || !newPassword) {
       return res.status(400).json({ message: 'Vui lòng nhập mật khẩu hiện tại và mật khẩu mới' });

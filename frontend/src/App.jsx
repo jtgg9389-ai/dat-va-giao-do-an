@@ -1,4 +1,8 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import Orders, { OrderDetail } from './pages/Orders';
+import DriverDashboard from './pages/DriverDashboard';
+import AdminOperations from './pages/AdminOperations';
+import Notifications from './pages/Notifications';
 import Home from './pages/Home';
 import Login from './pages/Login';
 import Register from './pages/Register';
@@ -25,6 +29,11 @@ function App() {
     <BrowserRouter>
       <Routes>
         <Route path="/" element={<Home />} />
+        <Route path="/orders" element={<RequireRole roles={['customer']}><Orders /></RequireRole>} />
+        <Route path="/orders/:id" element={<RequireRole><OrderDetail /></RequireRole>} />
+        <Route path="/driver" element={<RequireRole roles={['driver']}><DriverDashboard /></RequireRole>} />
+        <Route path="/notifications" element={<RequireRole><Notifications /></RequireRole>} />
+        <Route path="/admin/operations" element={<RequireRole roles={['admin']}><AdminOperations /></RequireRole>} />
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
         <Route path="/profile" element={<Profile />} />

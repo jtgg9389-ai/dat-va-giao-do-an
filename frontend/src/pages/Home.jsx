@@ -65,6 +65,9 @@ function Home() {
 
       {/* Action cards */}
       <div className="home-actions">
+        <Link to="/notifications" className="action-card"><div className="action-emoji">🔔</div><div className="action-title">Thông báo</div><div className="action-desc">Cập nhật đơn hàng và đối soát.</div></Link>
+        {user.role === 'customer' && <Link to="/orders" className="action-card"><div className="action-emoji">📦</div><div className="action-title">Đơn hàng của tôi</div><div className="action-desc">Theo dõi giao hàng, lịch sử, hủy và đánh giá.</div></Link>}
+        {user.role === 'admin' && <Link to="/admin/operations" className="action-card"><div className="action-emoji">📊</div><div className="action-title">Vận hành & đối soát</div><div className="action-desc">Tài xế, đơn, sự cố và thu/chi giả lập.</div></Link>}
         <Link to="/profile" className="action-card">
           <div className="action-emoji">👤</div>
           <div className="action-title">Thông tin cá nhân</div>
@@ -94,11 +97,11 @@ function Home() {
         )}
 
         {user.role === 'driver' && (
-          <div className="action-card disabled">
+          <Link to="/driver" className="action-card">
             <div className="action-emoji">📦</div>
             <div className="action-title">Nhận đơn giao hàng</div>
-            <div className="action-status">Sắp ra mắt</div>
-          </div>
+            <div className="action-desc">GPS, cuốc giao, thu nhập và đối soát.</div>
+          </Link>
         )}
 
         {user.role === 'customer' && (

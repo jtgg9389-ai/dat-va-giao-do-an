@@ -11,6 +11,7 @@ function RestaurantDetail() {
   const navigate = useNavigate();
   const [restaurant, setRestaurant] = useState(null);
   const [menu, setMenu] = useState([]);
+  const [reviews, setReviews] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
@@ -20,6 +21,7 @@ function RestaurantDetail() {
         const res = await api.get(`/restaurants/${id}`);
         setRestaurant(res.data.restaurant);
         setMenu(res.data.menu);
+        const reviewRes = await api.get(`/restaurants/${id}/reviews`); setReviews(reviewRes.data.reviews);
       } catch (err) {
         if (err.response?.status === 401 || err.response?.status === 403) {
           localStorage.clear();
@@ -75,6 +77,7 @@ function RestaurantDetail() {
                   <h3 className="rs-category">{cat}</h3>
                   {items.map((m) => (
                     <div className={`rs-menu-item ${m.available ? '' : 'off'}`} key={m._id}>
+                      {m.image && <img className="rs-menu-image" src={m.image} alt={m.name} loading="lazy" />}
                       <div className="rs-menu-info">
                         <div className="rs-menu-name">
                           {m.name} {!m.available && <span className="rs-badge off">Hết món</span>}
@@ -89,6 +92,7 @@ function RestaurantDetail() {
 
 
             </section>
+            <section className="rs-card"><h2>Đánh giá nhà hàng</h2>{!reviews.length && <p>Chưa có đánh giá.</p>}{reviews.map(r => <p key={r._id}>{r.restaurantRating}/5 ★ · {r.comment || 'Không có nhận xét'}</p>)}</section>
             <RestaurantCheckout key={restaurant._id} restaurant={restaurant} menu={menu} />
           </>
         )}

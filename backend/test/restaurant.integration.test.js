@@ -14,7 +14,7 @@ async function request(path, user, method = 'GET', body, key) {
   const response = await fetch(base + path, { method, headers: { 'Content-Type': 'application/json', ...(user ? { Authorization: `Bearer ${token(user)}` } : {}), ...(key ? { 'Idempotency-Key': key } : {}) }, body: body === undefined ? undefined : JSON.stringify(body) });
   return { status: response.status, data: await response.json() };
 }
-const orderBody = () => ({ restaurantId: restaurant.id, items: [{ menuItem: item.id, quantity: 2 }], address: '123 Duong Thu Nghiem', phone: '0901234567' });
+const orderBody = () => ({ restaurantId: restaurant.id, items: [{ menuItem: item.id, quantity: 2 }], address: '123 Duong Thu Nghiem', phone: '0901234567', deliveryLocation: { latitude: 10.771, longitude: 106.691 } });
 async function createOrder() { const result = await request('/api/orders', customer, 'POST', orderBody(), crypto.randomUUID()); assert.equal(result.status, 201); return result.data.order; }
 before(async () => {
   process.env.JWT_SECRET = crypto.randomBytes(32).toString('hex');
@@ -27,8 +27,8 @@ before(async () => {
     { name: 'Quán B', email: 'other@test.invalid', password: 'unused', role: 'restaurant' },
     { name: 'Khách', email: 'customer@test.invalid', password: 'unused', role: 'customer' },
   ]);
-  restaurant = await Restaurant.create({ owner: owner._id, name: 'Quán A', address: 'Dia chi quan A', approvalStatus: 'approved' });
-  otherRestaurant = await Restaurant.create({ owner: otherOwner._id, name: 'Quán B', address: 'Dia chi quan B', approvalStatus: 'approved' });
+  restaurant = await Restaurant.create({ owner: owner._id, name: 'Quán A', address: 'Dia chi quan A', approvalStatus: 'approved', location: { latitude: 10.77, longitude: 106.69 } });
+  otherRestaurant = await Restaurant.create({ owner: otherOwner._id, name: 'Quán B', address: 'Dia chi quan B', approvalStatus: 'approved', location: { latitude: 10.77, longitude: 106.69 } });
   item = await MenuItem.create({ restaurant: restaurant._id, name: 'Cơm gà', price: 35000 });
   server = await new Promise(resolve => { const s = app.listen(0, '127.0.0.1', () => resolve(s)); });
   base = `http://127.0.0.1:${server.address().port}`;
@@ -41,6 +41,19 @@ test('menu CRUD and availability are scoped to the restaurant owner', async () =
   assert.equal((await request(`/api/restaurants/mine/menu/${id}`, otherOwner, 'PUT', { price: 1 })).status, 404);
   assert.equal((await request(`/api/restaurants/mine/menu/${id}`, owner, 'PUT', { available: 'false' })).status, 400);
   result = await request(`/api/restaurants/mine/menu/${id}`, owner, 'PUT', { available: false, price: 6000 }); assert.equal(result.data.item.available, false); assert.equal(result.data.item.price, 6000);
+  const image = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+aR9sAAAAASUVORK5CYII=';
+  result = await request(`/api/restaurants/mine/menu/${id}`, owner, 'PUT', { image });
+  assert.equal(result.status, 200); assert.equal(result.data.item.image, image);
+  assert.equal((await request(`/api/restaurants/mine/menu/${id}`, otherOwner, 'PUT', { image: '' })).status, 404);
+  assert.equal((await request(`/api/restaurants/mine/menu/${id}`, owner, 'PUT', { image: 'data:image/svg+xml;base64,PHN2Zz48L3N2Zz4=' })).status, 400);
+  assert.equal((await request(`/api/restaurants/mine/menu/${id}`, owner, 'PUT', { image: 'data:image/png;base64,SGVsbG8=' })).status, 400);
+  assert.equal((await request(`/api/restaurants/mine/menu/${id}`, owner, 'PUT', { image: 'data:image/png;base64,' + Buffer.alloc(2 * 1024 * 1024 + 1).toString('base64') })).status, 400);
+  result = await request('/api/restaurants/mine', owner);
+  assert.equal(result.data.menu.find(m => m._id === id).image, image);
+  result = await request(`/api/restaurants/${restaurant.id}`, customer);
+  assert.equal(result.data.menu.find(m => m._id === id).image, image);
+  result = await request(`/api/restaurants/mine/menu/${id}`, owner, 'PUT', { image: '' });
+  assert.equal(result.data.item.image, '');
   assert.equal((await request(`/api/restaurants/mine/menu/${id}`, otherOwner, 'DELETE')).status, 404);
   assert.equal((await request(`/api/restaurants/mine/menu/${id}`, owner, 'DELETE')).status, 200);
 });
@@ -62,7 +75,7 @@ test('rejects unauthenticated, wrong role, closed/unapproved restaurants and una
     await Restaurant.updateOne({ _id: restaurant._id }, update);
     assert.equal((await request('/api/orders', customer, 'POST', orderBody(), crypto.randomUUID())).status, 409);
   }
-  await Restaurant.updateOne({ _id: restaurant._id }, { isOpen: true, approvalStatus: 'approved' });
+  await Restaurant.updateOne({ _id: restaurant._id }, { isOpen: true, approvalStatus: 'approved', location: { latitude: 10.77, longitude: 106.69 } });
   await MenuItem.updateOne({ _id: item._id }, { available: false });
   assert.equal((await request('/api/orders', customer, 'POST', orderBody(), crypto.randomUUID())).status, 409);
   await MenuItem.updateOne({ _id: item._id }, { available: true });

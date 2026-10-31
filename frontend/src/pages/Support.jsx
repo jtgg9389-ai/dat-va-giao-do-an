@@ -123,7 +123,7 @@ function Support() {
             </label>
 
             <label className="ad-label">
-              Mã đơn hàng (nếu có)
+              Mã đơn hàng (ID đầy đủ để liên kết hồ sơ) (nếu có)
               <input name="orderCode" maxLength={30} value={form.orderCode} onChange={handleChange} />
             </label>
 

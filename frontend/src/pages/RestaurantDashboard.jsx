@@ -4,11 +4,12 @@ import api from '../api';
 import './Restaurant.css';
 import RestaurantOrders from '../components/RestaurantOrders';
 import RestaurantReport from '../components/RestaurantReport';
+import PartnerSettlements from '../components/PartnerSettlements';
 
 const formatPrice = (n) => `${Number(n).toLocaleString('vi-VN')}đ`;
 
-const emptyInfo = { name: '', address: '', phone: '', description: '', isOpen: true };
-const emptyItem = { name: '', price: '', category: '', description: '' };
+const emptyInfo = { name: '', address: '', phone: '', description: '', isOpen: true, latitude: '', longitude: '', cuisine: '' };
+const emptyItem = { name: '', price: '', category: '', description: '', image: '' };
 const noMsg = { type: '', text: '' };
 
 function RestaurantDashboard() {
@@ -42,6 +43,7 @@ function RestaurantDashboard() {
             phone: r.phone || '',
             description: r.description || '',
             isOpen: r.isOpen,
+            latitude: r.location?.latitude ?? '', longitude: r.location?.longitude ?? '', cuisine: r.cuisine || '',
           });
           setMenu(res.data.menu);
           setApproval({ status: r.approvalStatus || 'pending', reason: r.rejectReason || '' });
@@ -71,7 +73,7 @@ function RestaurantDashboard() {
     setInfoMsg(noMsg);
     setSavingInfo(true);
     try {
-      const res = await api.put('/restaurants/mine', info);
+      const res = await api.put('/restaurants/mine', { ...info, location: { latitude: Number(info.latitude), longitude: Number(info.longitude) } });
       setHasRestaurant(true);
       setApproval({ status: res.data.restaurant.approvalStatus, reason: res.data.restaurant.rejectReason || '' });
       setInfoMsg({ type: 'success', text: res.data.message });
@@ -84,6 +86,20 @@ function RestaurantDashboard() {
 
   // ----- Thực đơn -----
   const handleItemChange = (e) => setItem({ ...item, [e.target.name]: e.target.value });
+
+  const handleImage = (e) => {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file) return;
+    if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type) || file.size > 2 * 1024 * 1024) {
+      setItemMsg({ type: 'error', text: 'Chọn ảnh JPG, PNG hoặc WebP tối đa 2 MB' });
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => { setItem(previous => ({ ...previous, image: reader.result })); setItemMsg(noMsg); };
+    reader.onerror = () => setItemMsg({ type: 'error', text: 'Không đọc được ảnh. Vui lòng chọn lại.' });
+    reader.readAsDataURL(file);
+  };
 
   const resetItemForm = () => {
     setItem(emptyItem);
@@ -118,6 +134,7 @@ function RestaurantDashboard() {
       price: String(m.price),
       category: m.category || '',
       description: m.description || '',
+      image: m.image || '',
     });
     setEditingId(m._id);
     setItemMsg(noMsg);
@@ -198,6 +215,10 @@ function RestaurantDashboard() {
               Mô tả
               <textarea name="description" rows="3" value={info.description} onChange={handleInfoChange} />
             </label>
+            <label className="rs-field">Loại món<input name="cuisine" value={info.cuisine} onChange={handleInfoChange} maxLength={50} placeholder="Cơm, bún, đồ uống…" /></label>
+            <div className="rs-actions"><button type="button" className="rs-btn secondary" onClick={() => navigator.geolocation?.getCurrentPosition(p => setInfo(previous => ({ ...previous, latitude: p.coords.latitude, longitude: p.coords.longitude })), () => setInfoMsg({ type: 'error', text: 'Không lấy được vị trí; nhập tọa độ thủ công.' }))}>Lấy vị trí quán hiện tại</button></div>
+            <label className="rs-field">Vĩ độ quán<input name="latitude" type="number" min="-90" max="90" step="any" required value={info.latitude} onChange={handleInfoChange} /></label>
+            <label className="rs-field">Kinh độ quán<input name="longitude" type="number" min="-180" max="180" step="any" required value={info.longitude} onChange={handleInfoChange} /></label>
             <label className="rs-switch full">
               <input type="checkbox" name="isOpen" checked={info.isOpen} onChange={handleInfoChange} />
               Đang mở cửa nhận đơn
@@ -219,6 +240,7 @@ function RestaurantDashboard() {
           <>
             <RestaurantOrders />
             <RestaurantReport />
+            <PartnerSettlements />
             {/* Form thêm / sửa món */}
             <section className="rs-card" id="menu-form">
               <h2>{editingId ? 'Sửa món ăn' : 'Thêm món ăn'}</h2>
@@ -258,6 +280,12 @@ function RestaurantDashboard() {
                   <input name="description" value={item.description} onChange={handleItemChange} />
                 </label>
 
+                <div className="rs-field full">
+                  <label htmlFor="menu-image">Ảnh món ăn (JPG, PNG, WebP, tối đa 2 MB)</label>
+                  <input id="menu-image" type="file" accept="image/jpeg,image/png,image/webp" onChange={handleImage} disabled={savingItem} />
+                  {item.image && <div className="rs-image-preview"><img src={item.image} alt="Ảnh món đang chọn" /><button className="rs-btn secondary" type="button" onClick={() => setItem(previous => ({ ...previous, image: '' }))}>Bỏ ảnh</button></div>}
+                </div>
+
                 {itemMsg.text && (
                   <p className={`${itemMsg.type === 'error' ? 'rs-error' : 'rs-success'} full`}>{itemMsg.text}</p>
                 )}
@@ -288,6 +316,7 @@ function RestaurantDashboard() {
                   <h3 className="rs-category">{cat}</h3>
                   {items.map((m) => (
                     <div className={`rs-menu-item ${m.available ? '' : 'off'}`} key={m._id}>
+                      {m.image && <img className="rs-menu-image" src={m.image} alt={m.name} loading="lazy" />}
                       <div className="rs-menu-info">
                         <div className="rs-menu-name">
                           {m.name} {!m.available && <span className="rs-badge off">Hết món</span>}

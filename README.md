@@ -1,4 +1,6 @@
 # dat-va-giao-do-an
+
+**Bản chức năng hiện tại (MongoDB):** [Hướng dẫn chạy toàn bộ luồng khách–quán–tài xế–admin](docs/full-workflow.md). Có ảnh món, COD/thanh toán giả lập, GPS/WebSocket, giao hàng, đánh giá và đối soát. PostgreSQL/Redis trong đề bài chưa được chuyển vào mã theo lựa chọn giữ MongoDB.
 Nguyễn Minh Đưc 2506022014
 Nguyễn Trong Khang 2513022003
 Nguyễn Gia Huy 2506022010

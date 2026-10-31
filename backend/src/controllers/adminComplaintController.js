@@ -1,4 +1,5 @@
 const mongoose = require('mongoose');
+const Order = require('../models/Order');
 const Complaint = require('../models/Complaint');
 const { logAudit } = require('../utils/audit');
 
@@ -112,6 +113,10 @@ exports.updateComplaint = async (req, res) => {
       return res.status(409).json({ message: 'Khiếu nại vừa được cập nhật, vui lòng tải lại' });
     }
 
+    if (complaint.order && !OPEN_STATES.includes(complaint.status)) {
+      const openFinancial = await Complaint.exists({ order: complaint.order, category: 'payment', status: { $in: OPEN_STATES } });
+      if (!openFinancial) await Order.updateOne({ _id: complaint.order }, { $set: { settlementHold: false } });
+    }
     await logAudit({
       actor: req.user.id, action: 'COMPLAINT_UPDATE', entityType: 'complaint', entityId: id,
       before: before.status, after: complaint.status,

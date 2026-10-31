@@ -24,7 +24,13 @@ Dự án hiện dùng Express/MongoDB và React/Vite. Kiến trúc PostgreSQL/Re
 
 Danh sách đơn/stream hiển thị tối đa 200 đơn mới nhất. Snapshot đầu tiên là trạng thái hiện tại; các đơn mới xuất hiện sau đó được báo riêng. Đơn tạo trong lúc mất kết nối được lấy lại khi nối lại. SSE cung cấp cập nhật cho dashboard nhà hàng; chưa thay thế hệ thống WebSocket tracking trong thiết kế tổng thể. Không có push/email khi đóng trang.
 
-Đơn lưu snapshot tên, giá, số lượng, tiền món, hoa hồng và tiền được hưởng tại lúc tạo. Backend tự tính các khoản này, không nhận tổng tiền do client gửi. Chỉ cho đặt quán đã duyệt, đang mở, chủ quán không bị khóa, món còn hàng và thuộc quán. Đặt COD ở đây là luồng tối thiểu phục vụ nhận đơn; chưa tính phí vận chuyển, thanh toán trực tuyến hay gán tài xế.
+Đơn lưu snapshot tên, giá, số lượng, tiền món, hoa hồng và tiền được hưởng tại lúc tạo. Backend tự tính các khoản này, không nhận tổng tiền do client gửi. Chỉ cho đặt quán đã duyệt, đang mở, chủ quán không bị khóa, món còn hàng và thuộc quán. Đặt món đã hỗ trợ phí giao, COD hoặc thanh toán giả lập và tìm tài xế; không tích hợp thanh toán thật.
+
+## Ảnh món ăn
+
+Form thêm/sửa món hỗ trợ chọn ảnh JPG, PNG hoặc WebP tối đa 2 MB, xem trước và bỏ ảnh. Ảnh lưu cùng bản ghi món dưới dạng data URL; không cần tài khoản lưu trữ ngoài hay sao chép thư mục uploads khi đổi máy. API kiểm tra base64, kích thước và chữ ký định dạng; không nhận SVG/HTML. Ảnh xuất hiện trong menu quản lý và menu khách hàng, còn món cũ không có ảnh vẫn hoạt động bình thường.
+
+Không đưa ảnh vào snapshot đơn hoặc stream để tránh phình dữ liệu realtime. Giới hạn JSON request 3 MB; ảnh lớn hơn 2 MB phải được giảm kích thước trước khi chọn. Với dữ liệu vận hành lớn, nên chuyển ảnh sang object storage và giữ URL trong model.
 
 ## API
 
@@ -38,11 +44,9 @@ Tất cả endpoint yêu cầu `Authorization: Bearer <JWT>`; quyền lấy từ
 | `PATCH /api/restaurants/mine/orders/:orderId/status` | restaurant | Body `{status, reason?}`; `CONFIRMED`, `REJECTED`, `PREPARING`, `READY_FOR_PICKUP`. |
 | `GET /api/restaurants/mine/report?from=YYYY-MM-DD&to=YYYY-MM-DD` | restaurant | Doanh thu theo `completedAt`, lịch sử đối soát theo `settlement.finalizedAt`. Hai đầu ngày bao gồm, múi giờ Việt Nam. |
 
-## Điểm tích hợp còn lại của các vai trò khác
+## Giao hàng và đối soát đã nối
 
-Phần giao hàng của tài xế và phần chốt/chi đối soát của admin chưa có trong dự án. Vì vậy, đơn mới đi được đến `READY_FOR_PICKUP` qua giao diện hiện tại; không tạo doanh thu hoặc kỳ đối soát giả để lấp dữ liệu trống.
-
-Module giao hàng sau này phải cập nhật `status=COMPLETED`, `completedAt`, lịch sử và `codConfirmed` sau khi thực sự giao/thu COD. Module đối soát phải kiểm tra đủ điều kiện, chốt một lần và ghi `settlement.reference`, `settlement.finalizedAt`; chỉ ghi `settlement.paidAt` khi ghi nhận chi giả lập. Báo cáo chỉ đọc dữ liệu này, không có quyền chốt kỳ/chi tiền. Đơn hoàn tất chưa xác nhận COD được ghi chú giữ lại. Chưa có worker tạo kỳ, sổ điều chỉnh hay giải quyết tranh chấp.
+Xem [luồng bốn vai trò](full-workflow.md): driver nhận cuốc/gửi GPS/giao COD, admin xử lý sự cố/chốt từng đơn/ghi nhận thu chi giả lập và điều chỉnh sau chốt. Nhà hàng cần lưu tọa độ quán để hệ thống tính phí và tìm tài xế. Không tự đặt COMPLETED ở giao diện nhà hàng.
 
 ## Kiểm thử
 

@@ -337,3 +337,12 @@
 .rs-metrics dt { font-size: 13px; }
 .rs-metrics dd { font-weight: 700; margin: 8px 0 0; }
 .rs-actions { flex-wrap: wrap; }
+
+.rs-menu-image { width: 88px; height: 88px; object-fit: cover; border-radius: 12px; flex-shrink: 0; }
+.rs-image-preview { display: flex; align-items: center; flex-wrap: wrap; gap: 12px; }
+.rs-image-preview img { width: 180px; height: 140px; object-fit: cover; border-radius: 12px; }
+
+.flow-map { height: 360px; width: 100%; border-radius: 12px; z-index: 0; }
+.flow-admin { display: grid; gap: 20px; }
+.rs-card select { padding: 9px; color: #1a1a2e; background: white; border: 1px solid #d6d0c4; border-radius: 8px; }
+.rs-card { overflow-wrap: anywhere; }
