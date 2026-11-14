@@ -141,7 +141,7 @@ exports.drivers = async (req, res) => {
 };
 exports.reviewDriver = async (req, res) => {
   if (!['approved', 'rejected'].includes(req.body?.status) || !clean(req.body?.reason, 5, 300)) return fail(res, 400, 'Cần quyết định duyệt/từ chối và lý do 5–300 ký tự');
-  const profile = await Driver.findOneAndUpdate({ user: req.params.id }, { $set: { approvalStatus: req.body.status, reviewReason: req.body.reason, ...(req.body.status === 'rejected' ? { online: false } : {}) } }, { new: true });
+  const profile = await Driver.findOneAndUpdate({ user: req.params.id }, { $set: { autoApprovalBlocked: true, approvalStatus: req.body.status, reviewReason: req.body.reason, ...(req.body.status === 'rejected' ? { online: false } : {}) } }, { new: true });
   if (!profile) return fail(res, 404, 'Tài xế chưa tạo hồ sơ');
   await logAudit({ actor: req.user.id, action: 'DRIVER_REVIEW', entityType: 'user', entityId: req.params.id, after: req.body.status, reason: req.body.reason }); res.json({ profile });
 };

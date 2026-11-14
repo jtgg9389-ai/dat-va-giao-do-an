@@ -28,8 +28,8 @@ function Register() {
   };
 
   return (
-    <div style={styles.container}>
-      <form style={styles.form} onSubmit={handleSubmit}>
+    <div className="auth-page" style={styles.container}>
+      <form className="auth-card" style={styles.form} onSubmit={handleSubmit}>
         <h2>Đăng ký</h2>
         {error && <p style={styles.error}>{error}</p>}
 

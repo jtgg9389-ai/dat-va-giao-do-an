@@ -2,6 +2,12 @@ const mongoose = require('mongoose');
 
 const restaurantSchema = new mongoose.Schema({
   // Mỗi tài khoản nhà hàng chỉ sở hữu 1 quán
+  autoApprovalBlocked: { type: Boolean, default: false },
+  autoApproval: {
+    at: Date,
+    reason: String,
+    enabledBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+  },
   owner: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true, unique: true },
   name: { type: String, required: true, trim: true },
   description: { type: String, default: '', trim: true },
