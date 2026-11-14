@@ -192,8 +192,8 @@ exports.updateUserRole = async (req, res) => {
 
     const updated = await User.findByIdAndUpdate(userId, { $set: { role, activeRole: role, roles: role === 'admin' ? [] : [role] } }, { new: true }).select('-password');
 
-    if (role !== 'driver') await Driver.updateOne({ user: userId }, { $set: { online: false, approvalStatus: 'pending' } });
-    if (role !== 'restaurant') await Restaurant.updateOne({ owner: userId }, { $set: { approvalStatus: 'pending' } });
+    if (role !== 'driver') {await Driver.updateOne({ user: userId },{$set: {online: false,approvalStatus: 'pending',autoApprovalBlocked: true,},});}
+    if (role !== 'restaurant') {await Restaurant.updateOne({ owner: userId },{$set: {approvalStatus: 'pending',autoApprovalBlocked: true,},});}
     await logAudit({
       actor: req.user.id, action: 'USER_ROLE_CHANGE', entityType: 'user', entityId: userId,
       before: target.role, after: role, reason,

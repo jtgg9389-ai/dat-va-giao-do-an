@@ -37,8 +37,8 @@ function Login() {
   };
 
   return (
-    <div style={styles.container}>
-      <form style={styles.form} onSubmit={handleSubmit}>
+    <div className="auth-page" style={styles.container}>
+      <form className="auth-card" style={styles.form} onSubmit={handleSubmit}>
         <h2 style={{ marginTop: 0 }}>Đăng nhập</h2>
         {error && <p style={styles.error} role="alert">{error}</p>}
 

@@ -74,6 +74,7 @@ exports.reviewRestaurant = async (req, res) => {
       id,
       {
         $set: {
+          autoApprovalBlocked: true,
           approvalStatus: nextStatus,
           rejectReason: decision === 'reject' ? reason : '',
           reviewedBy: req.user.id,

@@ -4,6 +4,12 @@ const pointSchema = new mongoose.Schema({
   coordinates: { type: [Number], required: true, validate: value => value.length === 2 },
 }, { _id: false });
 const schema = new mongoose.Schema({
+  autoApprovalBlocked: { type: Boolean, default: false },
+  autoApproval: {
+    at: Date,
+    reason: String,
+    enabledBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+  },
   user: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true, unique: true },
   approvalStatus: { type: String, enum: ['pending', 'approved', 'rejected'], default: 'pending' },
   reviewReason: { type: String, default: '' },

@@ -8,7 +8,30 @@ const { verifyToken, requireRole } = require('../middleware/authMiddleware');
 
 // Mọi route trong file này yêu cầu: đã đăng nhập + vai trò admin
 router.use(verifyToken, requireRole('admin'));
-
+const autoApproval = require('../services/autoApproval');
+router.get('/auto-approval', async (req, res, next) => {
+  try {
+    res.json(await autoApproval.getSetting());
+  } catch (error) {
+    next(error);
+  }
+});
+router.patch('/auto-approval', async (req, res, next) => {
+  if (typeof req.body?.enabled !== 'boolean') {
+    return res.status(400).json({
+      message: 'enabled phải là true hoặc false',
+    });
+  }
+  try {
+    const setting = await autoApproval.setEnabled(
+      req.body.enabled,
+      req.user.id
+    );
+    res.json(setting);
+  } catch (error) {
+    next(error);
+  }
+});
 router.get('/stats', stats.getStats);
 
 router.get('/users', admin.listUsers);

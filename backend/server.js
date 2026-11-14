@@ -11,11 +11,20 @@ connectDB().then(async () => {
   const server = http.createServer(app);
   const wss = attachRealtime(server);
   const stopWorker = startWorker();
+  const stopAutoApproval =
+  require('./src/services/autoApproval').startAutoApproval();
   server.listen(PORT, () => console.log(`Server đang chạy tại http://localhost:${PORT}; Swagger: /api-docs/`));
   let closing = false;
   const close = () => {
-    if (closing) return; closing = true;
-    stopWorker(); wss.clients.forEach(c => c.terminate()); wss.close();
+    if (closing) return;
+    closing = true;
+  
+    stopAutoApproval();
+    stopWorker();
+  
+    wss.clients.forEach(c => c.terminate());
+    wss.close();
+  
     server.close(() => mongoose.disconnect());
   };
   process.on('SIGTERM', close); process.on('SIGINT', close);

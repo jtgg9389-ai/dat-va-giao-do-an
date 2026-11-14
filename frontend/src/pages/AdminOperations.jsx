@@ -3,6 +3,7 @@ import api from '../api';
 import AdminLayout from './AdminLayout';
 import useLiveResource from '../hooks/useLiveResource';
 import { statusLabel, money } from '../utils/flowLabels';
+import AutoApprovalPanel from '../components/AutoApprovalPanel';
 export default function AdminOperations() {
   const orders = useLiveResource('/admin/orders'), drivers = useLiveResource('/admin/drivers'), settlements = useLiveResource('/settlements');
   const [error, setError] = useState(''), [busy, setBusy] = useState(false);
@@ -12,6 +13,7 @@ export default function AdminOperations() {
   async function send(path, body, method = 'post') { setBusy(true); setError(''); try { const { data } = await api[method](path, body); if (data.message) window.alert(data.message); await Promise.all([orders.refresh(), drivers.refresh(), settlements.refresh()]); } catch (e) { setError(e.response?.data?.message || 'Không thực hiện được'); } finally { setBusy(false); } }
   async function action(o, action) { const reason = window.prompt('Lý do thao tác (5–300 ký tự)'); if (reason) await send(`/admin/orders/${o._id}/action`, { action, reason }); }
   return <AdminLayout title="Vận hành, tài xế & đối soát"><div className="flow-admin">
+    <AutoApprovalPanel />
     {error && <p className="rs-error" role="alert">{error}</p>}
     {[orders, drivers, settlements].map((s, i) => s.error && <p role="alert" key={i}>{s.error}</p>)}
     <section className="rs-card"><h2>Duyệt hồ sơ tài xế</h2>{drivers.data?.drivers.length === 0 && <p>Tài xế cần đăng nhập và mở trang Tài xế để tạo hồ sơ.</p>}{drivers.data?.drivers.map(d => <article className="rs-order" key={d._id}><p>{d.user?.name} · {d.user?.email} · {d.approvalStatus} · {d.online ? 'Online' : 'Offline'}</p><div className="rs-actions">{['approved','rejected'].map(status => <button className="rs-btn secondary" key={status} disabled={busy || d.approvalStatus === status} onClick={() => { const reason = window.prompt('Lý do quyết định (5–300 ký tự)'); if (reason) send(`/admin/drivers/${d.user._id}/review`, { status, reason }, 'patch'); }}>{status === 'approved' ? 'Duyệt tài xế' : 'Từ chối / thu hồi duyệt'}</button>)}</div></article>)}</section>

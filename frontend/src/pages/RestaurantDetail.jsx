@@ -4,101 +4,120 @@ import api from '../api';
 import './Restaurant.css';
 import RestaurantCheckout from '../components/RestaurantCheckout';
 
-const formatPrice = (n) => `${Number(n).toLocaleString('vi-VN')}đ`;
-
-function RestaurantDetail() {
+export default function RestaurantDetail() {
   const { id } = useParams();
+  return <RestaurantPage key={id} id={id} />;
+}
+
+function RestaurantPage({ id }) {
   const navigate = useNavigate();
   const [restaurant, setRestaurant] = useState(null);
   const [menu, setMenu] = useState([]);
   const [reviews, setReviews] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [reviewError, setReviewError] = useState('');
 
   useEffect(() => {
-    const fetchData = async () => {
+    let active = true;
+
+    async function load() {
       try {
-        const res = await api.get(`/restaurants/${id}`);
-        setRestaurant(res.data.restaurant);
-        setMenu(res.data.menu);
-        const reviewRes = await api.get(`/restaurants/${id}/reviews`); setReviews(reviewRes.data.reviews);
-      } catch (err) {
-        if (err.response?.status === 401 || err.response?.status === 403) {
+        const { data } = await api.get(`/restaurants/${id}`);
+        if (!active) return;
+
+        setRestaurant(data.restaurant);
+        setMenu(data.menu || []);
+        setLoading(false);
+
+        try {
+          const response = await api.get(`/restaurants/${id}/reviews`);
+          if (active) setReviews(response.data.reviews || []);
+        } catch {
+          if (active) {
+            setReviewError(
+              'Chưa tải được đánh giá. Bạn vẫn có thể chọn món.'
+            );
+          }
+        }
+      } catch (e) {
+        if (!active) return;
+
+        if ([401, 403].includes(e.response?.status)) {
           localStorage.clear();
           navigate('/login');
-        } else if (err.response?.status === 404) {
-          setError('Không tìm thấy nhà hàng này');
         } else {
-          setError('Không tải được thông tin nhà hàng');
+          setError(
+            e.response?.status === 404
+              ? 'Không tìm thấy nhà hàng.'
+              : 'Không tải được nhà hàng. Hãy tải lại trang.'
+          );
         }
       } finally {
-        setLoading(false);
+        if (active) setLoading(false);
       }
-    };
-    fetchData();
+    }
+
+    void load();
+    return () => { active = false; };
   }, [id, navigate]);
 
-  const grouped = menu.reduce((acc, m) => {
-    const key = m.category || 'Khác';
-    (acc[key] = acc[key] || []).push(m);
-    return acc;
-  }, {});
-
   return (
-    <div className="rs-page">
+    <div className="rs-page restaurant-shopping">
       <header className="rs-topbar">
-        <button className="rs-back" onClick={() => navigate('/restaurants')}>← Danh sách quán</button>
-        <h1>Thực đơn</h1>
+        <button
+          className="rs-back"
+          onClick={() => navigate('/restaurants')}
+        >
+          ← Danh sách quán
+        </button>
+        <h1>Chọn món & đặt hàng</h1>
       </header>
 
       <div className="rs-container">
-        {loading && <p className="rs-empty">Đang tải...</p>}
-        {error && <p className="rs-error">{error}</p>}
+        {loading && <p role="status">Đang tải thực đơn…</p>}
+        {error && <p className="rs-error" role="alert">{error}</p>}
 
         {restaurant && (
           <>
-            <section className="rs-card rs-detail-head">
-              <h2>{restaurant.name}</h2>
-              <span className={`rs-badge ${restaurant.isOpen ? 'open' : 'off'}`} style={{ alignSelf: 'flex-start' }}>
+            <section className="rs-card rs-detail-head order-restaurant-head">
+              <span className={`rs-badge ${restaurant.isOpen ? 'open' : 'off'}`}>
                 {restaurant.isOpen ? 'Đang mở cửa' : 'Đã đóng cửa'}
               </span>
+
+              <h2>{restaurant.name}</h2>
               <div className="rs-detail-meta">📍 {restaurant.address}</div>
-              {restaurant.phone && <div className="rs-detail-meta">📞 {restaurant.phone}</div>}
-              {restaurant.description && <div className="rs-detail-meta">{restaurant.description}</div>}
+
+              {restaurant.phone && (
+                <div className="rs-detail-meta">📞 {restaurant.phone}</div>
+              )}
+
+              {restaurant.description && (
+                <p className="rs-detail-meta">{restaurant.description}</p>
+              )}
             </section>
+
+            <RestaurantCheckout restaurant={restaurant} menu={menu} />
 
             <section className="rs-card">
-              <h2>Món ăn ({menu.length})</h2>
+              <h2>Đánh giá nhà hàng</h2>
 
-              {menu.length === 0 && <p className="rs-empty">Quán chưa có món nào.</p>}
+              {reviewError ? (
+                <p role="status">{reviewError}</p>
+              ) : !reviews.length && (
+                <p className="rs-empty">Chưa có đánh giá.</p>
+              )}
 
-              {Object.entries(grouped).map(([cat, items]) => (
-                <div key={cat}>
-                  <h3 className="rs-category">{cat}</h3>
-                  {items.map((m) => (
-                    <div className={`rs-menu-item ${m.available ? '' : 'off'}`} key={m._id}>
-                      {m.image && <img className="rs-menu-image" src={m.image} alt={m.name} loading="lazy" />}
-                      <div className="rs-menu-info">
-                        <div className="rs-menu-name">
-                          {m.name} {!m.available && <span className="rs-badge off">Hết món</span>}
-                        </div>
-                        {m.description && <div className="rs-menu-desc">{m.description}</div>}
-                      </div>
-                      <div className="rs-menu-price">{formatPrice(m.price)}</div>
-                    </div>
-                  ))}
-                </div>
+              {reviews.map(review => (
+                <p key={review._id}>
+                  ⭐ {review.restaurantRating}/5 ·{' '}
+                  {review.comment || 'Không có nhận xét'}
+                </p>
               ))}
-
-
             </section>
-            <section className="rs-card"><h2>Đánh giá nhà hàng</h2>{!reviews.length && <p>Chưa có đánh giá.</p>}{reviews.map(r => <p key={r._id}>{r.restaurantRating}/5 ★ · {r.comment || 'Không có nhận xét'}</p>)}</section>
-            <RestaurantCheckout key={restaurant._id} restaurant={restaurant} menu={menu} />
           </>
         )}
       </div>
     </div>
   );
 }
-
-export default RestaurantDetail;
