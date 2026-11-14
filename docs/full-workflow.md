@@ -47,7 +47,7 @@ Script không ghi đè/nâng quyền tài khoản có sẵn, không in mật kh�
 
 ## Một tài khoản dùng nhiều chế độ
 
-Thanh **Đang dùng với vai trò** ở đầu trang cho phép chọn **Khách hàng / Tài xế / Nhà hàng** mà không đăng xuất. Chuyển sang khách hàng để tự đặt món, rồi quay lại tài xế hoặc quán bằng cùng email. Không tạo tài khoản thứ hai và không thay chủ sở hữu dữ liệu cũ.
+Bấm biểu tượng tài khoản ở góc trên bên phải để mở **Thông tin cá nhân**. Mục **Đang dùng với vai trò** trong trang này cho phép chọn **Khách hàng / Tài xế / Nhà hàng** mà không đăng xuất. Chuyển sang khách hàng để tự đặt món, rồi quay lại tài xế hoặc quán bằng cùng email. Không tạo tài khoản thứ hai và không thay chủ sở hữu dữ liệu cũ.
 
 - Hồ sơ tài xế/nhà hàng, lịch sử đơn, điểm đánh giá và kết quả duyệt được giữ nguyên. Tài xế đã duyệt không phải duyệt lại chỉ vì chuyển chế độ.
 - Lần đầu kích hoạt tài xế có hồ sơ pending; lần đầu tạo quán vẫn pending. **Admin chỉ cần duyệt ban đầu**, trừ khi chủ động thu hồi duyệt. Không có nút tự chuyển thành admin hay tự duyệt đối tác.

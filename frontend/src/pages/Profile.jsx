@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../api';
+import RoleSwitcher from '../components/RoleSwitcher';
 import './Profile.css';
 
 const roleLabels = {
@@ -281,6 +282,7 @@ function Profile() {
 
               <section className="profile-section">
                 <h2>Thông tin cá nhân</h2>
+                <RoleSwitcher />
 
                 <EditableRow
                   label="Họ và tên"

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { useLocation } from 'react-router-dom';
 import api from '../api';
 const labels = { customer: 'Khách hàng', driver: 'Tài xế', restaurant: 'Nhà hàng' };
@@ -7,11 +7,6 @@ export default function RoleSwitcher() {
   const location = useLocation();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
-  useEffect(() => {
-    const sync = event => { if (event.key === 'user' || event.key === null) window.location.reload(); };
-    window.addEventListener('storage', sync);
-    return () => window.removeEventListener('storage', sync);
-  }, []);
   let user;
   try { user = JSON.parse(localStorage.getItem('user')); } catch { user = null; }
   if (!user || user.role === 'admin' || ['/login','/register'].includes(location.pathname)) return null;

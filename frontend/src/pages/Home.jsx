@@ -48,7 +48,7 @@ function Home() {
           FoodGo
         </div>
         <div className="header-right">
-          <div className="avatar">{user.name.charAt(0).toUpperCase()}</div>
+          <Link to="/profile" className="avatar" aria-label="Mở thông tin cá nhân" title="Thông tin cá nhân">{user.name.charAt(0).toUpperCase()}</Link>
           <button className="logout-link" onClick={handleLogout}>Đăng xuất</button>
         </div>
       </header>
