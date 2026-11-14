@@ -1,0 +1,320 @@
+/* Ghi đè CSS mẫu của Vite để trang tràn hết chiều ngang */
+#root {
+    width: 100%;
+    max-width: none;
+    border-inline: none;
+    text-align: left;
+  }
+  
+  .profile-page {
+    min-height: 100vh;
+    background: #fdfaf6;
+    font-family: -apple-system, 'Segoe UI', sans-serif;
+    color: #1a1a2e;
+  }
+  
+  /* ===== Thanh trên cùng ===== */
+  .profile-topbar {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 18px 40px;
+    background: #fff;
+    border-bottom: 1px solid #f1ece3;
+  }
+  
+  .profile-topbar h1 {
+    font-size: 20px;
+    font-weight: 800;
+    margin: 0;
+  }
+  
+  .back-btn {
+    background: none;
+    border: 1px solid #e5e0d6;
+    padding: 8px 16px;
+    border-radius: 999px;
+    font-size: 13px;
+    font-weight: 600;
+    color: #57534e;
+    cursor: pointer;
+  }
+  
+  .back-btn:hover { background: #faf8f5; }
+  
+  /* ===== Bố cục 2 cột ===== */
+  .profile-layout {
+    max-width: 1040px;
+    margin: 32px auto;
+    padding: 0 24px;
+    display: grid;
+    grid-template-columns: 300px 1fr;
+    gap: 24px;
+    align-items: start;
+  }
+  
+  .profile-sidebar,
+  .profile-main {
+    background: #fff;
+    border: 1px solid #f1ece3;
+    border-radius: 16px;
+    box-shadow: 0 4px 16px rgba(26, 26, 46, 0.05);
+  }
+  
+  /* ===== Thanh bên ===== */
+  .profile-sidebar {
+    padding: 28px 16px 16px;
+    text-align: center;
+  }
+  
+  .profile-avatar {
+    width: 84px;
+    height: 84px;
+    margin: 0 auto 12px;
+    border-radius: 50%;
+    background: #ff6a3d;
+    color: #fff;
+    font-size: 34px;
+    font-weight: 800;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 8px 20px rgba(255, 106, 61, 0.3);
+  }
+  
+  .profile-name {
+    font-size: 18px;
+    font-weight: 700;
+    margin-bottom: 8px;
+  }
+  
+  .role-chip {
+    display: inline-block;
+    padding: 4px 14px;
+    border-radius: 999px;
+    font-size: 12px;
+    font-weight: 600;
+  }
+  
+  .role-chip.customer { background: #fde8d7; color: #b8540a; }
+  .role-chip.restaurant { background: #dcf2e3; color: #1a7a42; }
+  .role-chip.driver { background: #dbeafe; color: #1d5fc2; }
+  .role-chip.admin { background: #ede9fe; color: #6d28d9; }
+  
+  .profile-menu {
+    margin-top: 24px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    text-align: left;
+  }
+  
+  .profile-menu button {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px;
+    border: none;
+    background: none;
+    border-radius: 10px;
+    cursor: pointer;
+    font-family: inherit;
+    color: #1a1a2e;
+    text-align: left;
+  }
+  
+  .profile-menu button:hover { background: #faf8f5; }
+  .profile-menu button.active { background: #fff1e6; }
+  
+  .menu-icon {
+    width: 36px;
+    height: 36px;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+    border-radius: 10px;
+    background: #faf8f5;
+  }
+  
+  .profile-menu button.active .menu-icon { background: #ffe0cc; }
+  
+  .profile-menu strong { display: block; font-size: 14px; }
+  
+  .profile-menu small {
+    display: block;
+    margin-top: 2px;
+    font-size: 12px;
+    line-height: 1.3;
+    color: #8a8578;
+  }
+  
+  /* ===== Nội dung chính ===== */
+  .profile-main { padding: 8px 28px 20px; }
+  
+  .profile-section {
+    padding: 20px 0;
+    border-bottom: 1px solid #f1ece3;
+  }
+  
+  .profile-section:last-child { border-bottom: none; }
+  
+  .profile-section h2 {
+    font-size: 17px;
+    font-weight: 700;
+    margin: 0 0 8px;
+  }
+  
+  .info-row {
+    display: grid;
+    grid-template-columns: 160px 1fr 90px;
+    gap: 12px;
+    align-items: start;
+    padding: 12px 0;
+  }
+  
+  .info-label {
+    padding-top: 2px;
+    font-size: 14px;
+    color: #8a8578;
+  }
+  
+  .info-value {
+    font-size: 14px;
+    font-weight: 600;
+    word-break: break-word;
+  }
+  
+  .info-value .empty {
+    font-weight: 500;
+    color: #a8a29e;
+  }
+  
+  .info-action { text-align: right; }
+  
+  .link-btn {
+    background: none;
+    border: none;
+    padding: 0;
+    font-family: inherit;
+    font-size: 14px;
+    font-weight: 600;
+    color: #ff6a3d;
+    cursor: pointer;
+  }
+  
+  .link-btn:hover { text-decoration: underline; }
+  
+  .locked {
+    font-size: 12px;
+    color: #a8a29e;
+  }
+  
+  /* ===== Ô nhập khi sửa ===== */
+  .edit-box input,
+  .edit-box select,
+  .security-form input {
+    width: 100%;
+    padding: 10px 12px;
+    border: 1px solid #d6d0c4;
+    border-radius: 8px;
+    background: #fff;
+    color: #1a1a2e;
+    font-family: inherit;
+    font-size: 14px;
+    box-sizing: border-box;
+  }
+  
+  .edit-box input:focus,
+  .edit-box select:focus,
+  .security-form input:focus {
+    outline: none;
+    border-color: #ff6a3d;
+    box-shadow: 0 0 0 3px rgba(255, 106, 61, 0.15);
+  }
+  
+  .edit-actions {
+    display: flex;
+    gap: 8px;
+    margin-top: 10px;
+  }
+  
+  .btn-save,
+  .btn-cancel {
+    padding: 8px 18px;
+    border-radius: 8px;
+    font-family: inherit;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+  }
+  
+  .btn-save {
+    border: none;
+    background: #ff6a3d;
+    color: #fff;
+  }
+  
+  .btn-save:hover { background: #f05a2c; }
+  
+  .btn-cancel {
+    border: 1px solid #e5e0d6;
+    background: #fff;
+    color: #57534e;
+  }
+  
+  .btn-save:disabled,
+  .btn-cancel:disabled { opacity: 0.6; cursor: default; }
+  
+  .field-error {
+    margin: 6px 0 0;
+    font-size: 13px;
+    font-weight: 500;
+    color: #d92d20;
+  }
+  
+  .msg-success {
+    margin: 0;
+    font-size: 14px;
+    font-weight: 600;
+    color: #1a7a42;
+  }
+  
+  /* ===== Form đổi mật khẩu ===== */
+  .security-form {
+    max-width: 420px;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    padding-top: 8px;
+  }
+  
+  .security-form label {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    font-size: 14px;
+    font-weight: 600;
+    color: #57534e;
+  }
+  
+  .security-form .btn-save {
+    align-self: flex-start;
+    padding: 11px 22px;
+  }
+  
+  /* ===== Màn hình nhỏ (điện thoại) ===== */
+  @media (max-width: 800px) {
+    .profile-topbar { padding: 14px 16px; }
+  
+    .profile-layout {
+      grid-template-columns: 1fr;
+      margin: 16px auto;
+    }
+  
+    .profile-main { padding: 8px 16px 16px; }
+  
+    .info-row { grid-template-columns: 1fr auto; }
+    .info-label { grid-column: 1 / -1; padding-top: 0; }
+  }

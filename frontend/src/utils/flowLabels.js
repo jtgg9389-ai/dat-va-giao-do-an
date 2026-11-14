@@ -1,0 +1,2 @@
+export const money = n => `${Number(n || 0).toLocaleString('vi-VN')} ₫`;
+export const statusLabel = { PENDING_PAYMENT: 'Chờ thanh toán giả lập', PENDING_CONFIRMATION: 'Chờ nhà hàng xác nhận', CONFIRMED: 'Nhà hàng đã nhận', PREPARING: 'Đang làm món', READY_FOR_PICKUP: 'Sẵn sàng giao', PICKED_UP: 'Tài xế đã lấy hàng', DELIVERING: 'Đang giao', COMPLETED: 'Đã giao thành công', CANCELLED: 'Đã hủy', REJECTED: 'Nhà hàng từ chối', DELIVERY_FAILED: 'Giao thất bại' };
