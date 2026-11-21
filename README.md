@@ -1,6 +1,7 @@
 # dat-va-giao-do-an
 
-**Bản chức năng hiện tại (MongoDB):** [Hướng dẫn chạy toàn bộ luồng khách–quán–tài xế–admin](docs/full-workflow.md). Có ảnh món, COD/thanh toán giả lập, GPS/WebSocket, giao hàng, đánh giá và đối soát. PostgreSQL/Redis trong đề bài chưa được chuyển vào mã theo lựa chọn giữ MongoDB.
+FoodGo lưu dữ liệu trong *MongoDB*. Backend Express kết nối qua Mongoose. Bản hiện tại có ảnh món, COD/thanh toán giả lập, theo dõi tài xế qua GPS/WebSocket, đánh giá và đối soát. [Hướng dẫn chạy toàn bộ luồng khách–quán–tài xế–admin](docs/full-workflow.md).
+
 Nguyễn Minh Đưc 2506022014
 Nguyễn Trong Khang 2513022003
 Nguyễn Gia Huy 2506022010
@@ -52,7 +53,7 @@ NFR-6	Hiệu năng	Truy vấn tài xế gần nhất phải tối ưu (index đ�
 NFR-7	Khả năng kiểm thử/theo dõi	Log đầy đủ lịch sử trạng thái đơn để phục vụ audit và đối soát
 NFR-8	UI/UX	Giao diện responsive, riêng biệt/rõ ràng cho từng vai trò (customer/restaurant/driver/admin)
 3. Yêu cầu về phạm vi kỹ thuật (Scope/Constraints)
-Ràng buộc công nghệ: dùng Postgres (có thể kèm PostGIS), Redis cho cache vị trí realtime, WebSocket cho tracking
+Hệ thống dùng *MongoDB* để lưu dữ liệu, chỉ mục `2dsphere` để tìm tài xế gần nhà hàng và WebSocket để cập nhật vị trí trên bản đồ.
 Ràng buộc nghiệp vụ:
 Một đơn hàng chỉ được gán cho 1 tài xế tại một thời điểm
 Trạng thái đơn chỉ được chuyển theo đúng luồng đã định nghĩa (không nhảy cóc trạng thái)
@@ -87,7 +88,7 @@ Xây dựng website giúp khách chọn món và đặt đồ ăn, nhà hàng x�
 
 | Nhóm | Nội dung |
 | --- | --- |
-| Bắt buộc theo README | Đầy đủ FR-1 đến FR-26; PostgreSQL, Redis, WebSocket, bản đồ Leaflet/OpenStreetMap; web responsive cho 4 vai trò |
+| Bắt buộc theo README | FR-1 đến FR-26, MongoDB, WebSocket, bản đồ Leaflet/OpenStreetMap và giao diện web responsive cho 4 vai trò |
 | Quy ước để giữ đồ án vừa sức | Một giỏ/một đơn thuộc một nhà hàng; một tài xế tối đa một đơn đang thực hiện; một tài khoản có một vai trò trong MVP; mỗi nhà hàng có một tài khoản vận hành |
 | Thanh toán | COD và cổng thanh toán giả lập; tuyệt đối không mô tả giao dịch giả lập là giao dịch ngân hàng thật |
 | Dữ liệu bản đồ | Có tọa độ nhà hàng, địa chỉ giao hàng và vị trí tài xế; hỗ trợ chọn điểm trên bản đồ, không bắt buộc tích hợp dịch vụ tìm địa chỉ |
@@ -134,21 +135,21 @@ Quy tắc backend:
 
 ### 7.1. Công nghệ
 
-Các thành phần bắt buộc giữ theo README; framework còn lại là đề xuất để nhóm thống nhất trước khi code. Chọn phiên bản ổn định tương thích tại thời điểm khởi tạo và khóa dependency bằng lockfile; tài liệu không áp đặt một phiên bản cụ thể.
+Bản hiện tại dùng React/Vite, Express và MongoDB qua Mongoose. Các lựa chọn Next.js, NestJS và Socket.IO trong bảng là đề xuất cho kiến trúc mở rộng.
 
 | Thành phần | Lựa chọn đề xuất | Vai trò |
 | --- | --- | --- |
 | Frontend | Next.js, React, TypeScript | Một web responsive, tách layout/route theo vai trò |
 | Giao diện | Tailwind CSS, bộ component dùng chung | Form, bảng, trạng thái, modal và thiết kế nhất quán |
 | Backend | NestJS, TypeScript | REST API, kiểm tra dữ liệu, RBAC, nghiệp vụ |
-| Database | PostgreSQL | Nguồn dữ liệu chính của đơn, tiền, lịch sử và đối soát |
-| ORM | Prisma | Schema, migration, truy vấn thông thường; migration SQL cho index đặc thù |
-| Cache/vị trí | Redis GEO và key có thời hạn | Tìm tài xế gần, heartbeat, cache dữ liệu tạm |
+| Cơ sở dữ liệu | *MongoDB* | Lưu tài khoản, nhà hàng, món ăn, đơn hàng, thanh toán và đối soát |
+| Truy cập dữ liệu | Mongoose | Định nghĩa schema và chỉ mục, đọc và cập nhật document từ backend |
+| Vị trí tài xế | GeoJSON và chỉ mục `2dsphere` của MongoDB | Tìm tài xế gần nhà hàng theo tọa độ mới nhất |
 | Thời gian thực | Socket.IO qua NestJS Gateway | Đơn mới, thay đổi trạng thái, đề nghị cuốc, vị trí |
-| Tác vụ nền | Worker cùng codebase; hàng đợi Redis hoặc bảng tác vụ bền vững | Timeout đề nghị cuốc, retry thông báo, tự động đối soát |
+| Tác vụ nền | Worker đọc các đơn đến hạn và sự kiện chờ gửi trong MongoDB | Xử lý đề nghị cuốc hết hạn, gửi lại thông báo và đối soát |
 | Bản đồ | Leaflet + nguồn tile OpenStreetMap phù hợp | Hiển thị bản đồ, marker, chọn tọa độ |
 | Xác thực | JWT access token + refresh token có thể thu hồi | Dùng chung nguồn xác thực cho HTTP và socket |
-| Môi trường | Docker Compose cho PostgreSQL/Redis | Nhóm có môi trường local thống nhất |
+| Môi trường | MongoDB trên máy hoặc MongoDB Atlas | Backend kết nối qua biến `MONGO_URI` |
 
 ### 7.2. Cấu trúc tổng thể
 
@@ -158,14 +159,12 @@ flowchart TD
     R["Web nhà hàng"] --> API
     D["Web tài xế"] --> API
     A["Web admin"] --> API
-    API --> DB["PostgreSQL"]
-    API --> CACHE["Redis"]
+    API --> DB["MongoDB"]
     API --> JOB["Worker tác vụ nền"]
     JOB --> DB
-    JOB --> CACHE
 ```
 
-Áp dụng modular monolith: một backend gồm các module có trách nhiệm rõ ràng; chưa cần microservices. Worker có thể là tiến trình riêng nhưng dùng chung mô hình nghiệp vụ. Redis không thay thế PostgreSQL để quyết định tiền, trạng thái đơn hoặc quyền nhận cuốc.
+Các module nghiệp vụ và worker dùng chung model Mongoose. Worker hiện chạy cùng backend, đọc các đề nghị cuốc đến hạn và các sự kiện chờ gửi đã lưu trong MongoDB.
 
 ### 7.3. Module backend
 
@@ -281,7 +280,7 @@ Khi nhà hàng nhận và khách hủy đồng thời, backend chỉ cho một c
 
 - Một đơn tối đa một assignment đang hoạt động; một tài xế tối đa một assignment đang hoạt động trong MVP.
 - Nhận cuốc phải kiểm tra đồng thời: tài xế được duyệt, online, vị trí còn mới, không bận; đề nghị còn hiệu lực; đơn chưa hủy/chưa có tài xế.
-- Mọi chuyển trạng thái hợp lệ tạo lịch sử trong cùng transaction với cập nhật đơn.
+- Ghi trạng thái mới và lịch sử trong cùng một lần cập nhật document `Order`.
 - Mọi sự kiện ảnh hưởng tiền có định danh chống trùng; callback và worker chạy lại không được thu/hoàn/đối soát thêm lần nữa.
 - Chỉ đơn COMPLETED đủ điều kiện vào đối soát doanh thu. Đơn khác vẫn lưu các giao dịch thu/hoàn và sự cố để audit, không xóa lịch sử tiền.
 - Hoàn thành đơn, đánh dấu tài xế rảnh và ghi nhận COD phải commit cùng nhau. Emit socket sau commit.
@@ -298,8 +297,7 @@ Khi nhà hàng nhận và khách hủy đồng thời, backend chỉ cho một c
 | Hạn trả lời đề nghị | 20 giây | Có |
 | Hạn một vòng tìm | 3 phút | Có |
 | GPS khi online/đang giao | Cố gắng gửi mỗi 3 giây khi trang hoạt động | Có; phụ thuộc trình duyệt |
-| Vị trí đủ mới để gán | Nhận được trong 15 giây gần nhất | Có |
-| TTL key vị trí | 60 giây | Có |
+| Vị trí đủ mới để gán | Bản hiện tại nhận vị trí trong 60 giây gần nhất, tính theo `locationAt` | Ngưỡng đặt trong backend |
 | Chờ nhà hàng xác nhận | 5 phút | Có |
 | Thanh toán giả lập | Hết hạn sau 10 phút | Có |
 
@@ -308,19 +306,19 @@ Các giá trị này là cấu hình thử nghiệm, không phải tiêu chuẩn
 ### 9.2. Luồng gán
 
 1. Chỉ bắt đầu tìm sau khi nhà hàng xác nhận đơn và điều kiện thanh toán hợp lệ.
-2. Lấy vị trí nhà hàng; Redis GEO trả ứng viên trong bán kính hiện tại. Loại tài xế offline, bị khóa, hồ sơ chưa duyệt, tọa độ cũ hoặc đang bận.
+2. Từ tọa độ nhà hàng, truy vấn `$near` trên vị trí tài xế với bán kính giới hạn. Chỉ chọn tài xế đã duyệt, đang online, có GPS còn mới, tài khoản hoạt động và đang rảnh.
 3. Xếp theo khoảng cách tăng dần, sau đó ưu tiên người chờ lâu hơn. Tải công việc trong MVP là 0 hoặc 1; người có tải 1 bị loại.
-4. Gửi tuần tự từng đề nghị 20 giây, lưu `expires_at` và trạng thái vào database. Không chỉ dùng countdown trên client.
-5. Nhận cuốc bằng transaction: khóa/kiểm tra đơn, hồ sơ tài xế và đề nghị; tạo assignment, đánh dấu bận, đóng đề nghị. Unique index là lớp bảo vệ cuối.
+4. Gửi tuần tự từng đề nghị và lưu hạn trả lời trong `Order.offers[].expiresAt`. Backend kiểm tra thời điểm này khi tài xế nhận cuốc.
+5. Khi tài xế nhận cuốc, kiểm tra hồ sơ rồi cập nhật `Order` với điều kiện đề nghị còn hiệu lực và đơn còn trống. MongoDB ghi người nhận và trạng thái đề nghị trong cùng một lần cập nhật. Chỉ mục duy nhất trên tài xế của các đơn đang hoạt động ngăn một người nhận hai cuốc.
 6. Nếu từ chối/hết hạn, chuyển ứng viên tiếp theo; mở rộng bán kính trong tổng hạn một vòng tìm. Không gửi lặp người vừa từ chối trong cùng vòng.
 7. Hết hạn chuyển NO_DRIVER, gửi thông báo khách/nhà hàng/admin. Admin tìm lại hoặc gán tay theo cùng điều kiện kiểm tra; không có API gán tay bỏ qua bất biến.
 
-Job timeout là job có thể chạy lại. Database quyết định đề nghị có còn PENDING và hết hạn hay chưa; Redis chỉ hỗ trợ lập lịch/tìm vị trí. Worker phục hồi sau restart bằng cách đọc lại tác vụ/đề nghị quá hạn.
+Khi backend khởi động lại, worker đọc các đề nghị còn chờ trong MongoDB, đánh dấu đề nghị đã hết hạn và tiếp tục tìm tài xế cho các đơn đến lượt.
 
 ### 9.3. GPS và fallback
 
-- Redis lưu `driver:{id}:location` kèm tọa độ, độ chính xác, thời gian nhận từ server và sequence. GEO index chỉ chứa ID/tọa độ; cần kiểm tra key freshness vì phần tử GEO không tự hết hạn theo từng tài xế.
-- Khi TTL hết hoặc offline, xóa khỏi GEO bằng tác vụ dọn; dù chưa dọn kịp vẫn loại ứng viên thiếu heartbeat.
+- `DriverProfile.location` lưu điểm GeoJSON theo thứ tự `[kinh độ, vĩ độ]`. Backend ghi thời điểm nhận vào `locationAt` và số thứ tự bản tin vào `locationSequence`.
+- Khi tìm tài xế, backend lọc theo `online` và `locationAt`. Hồ sơ và tọa độ lần cuối vẫn được giữ khi tài xế ngắt kết nối.
 - Bỏ gói đến trễ/sequence cũ; kiểm tra biên latitude/longitude và tốc độ thay đổi bất thường. GPS trình duyệt không phải bằng chứng chống gian lận.
 - Khách chỉ xem vị trí của tài xế đang giao đơn của mình; dừng phát vị trí cho khách khi đơn kết thúc. Nhà hàng chỉ cần thông tin đến lấy hàng, không cần theo dõi toàn tuyến.
 - Mất GPS hiển thị vị trí cuối + “Cập nhật cách đây …”; không tự cho marker tiếp tục chạy như GPS thật.
@@ -431,19 +429,27 @@ Các thao tác khóa, hủy ngoại lệ, chốt đối soát và ghi nhận tha
 
 ### 11.1. Quy ước
 
-- Khóa chính UUID; mã hiển thị riêng như `ORD-20261024-000001`, có unique constraint. Không dùng số thứ tự giao diện làm khóa quan hệ.
-- Tiền là số nguyên VND, lưu BIGINT, không dùng float. JSON truyền tiền dưới dạng chuỗi số như `"125000"`; xử lý số lớn nhất quán, không trả raw JavaScript BigInt.
+- Các model của FoodGo dùng `_id` kiểu `ObjectId`. Các trường tham chiếu như `Order.customer` và `Order.restaurant` lưu `_id` của document liên quan.
+- Tiền được tính theo đồng Việt Nam. Schema Mongoose dùng `Number` cho đơn giá, phí giao và tổng tiền. Đơn lưu đơn giá tại thời điểm khách đặt món.
 - Hiển thị đầy đủ `125.000 ₫`, `1.000.000 ₫`; không đưa ký hiệu `k` vào dữ liệu lưu. Định dạng tiền dùng một hàm chung cho cả bốn vai trò.
 - Tỷ lệ hoa hồng lưu basis point; `1000` tương ứng 10%. Quy tắc làm tròn thống nhất tới đồng, lưu kết quả tính tại thời điểm đơn được tạo.
-- Thời điểm lưu `timestamptz`, trao đổi ISO 8601; giao diện và kỳ báo cáo dùng `Asia/Ho_Chi_Minh`.
-- Bảng nghiệp vụ có `created_at`, `updated_at`; đơn có `version` để kiểm tra ghi đồng thời.
+- Thời điểm lưu dưới kiểu BSON `Date` và trao đổi qua API theo ISO 8601. Kỳ báo cáo dùng múi giờ `Asia/Ho_Chi_Minh`.
+- Schema có `timestamps` ghi `createdAt` và `updatedAt` theo cấu hình của từng model. Khi đổi trạng thái đơn, backend đưa trạng thái hiện tại vào điều kiện cập nhật.
 - Không xóa cứng người dùng/món/nhà hàng đang được lịch sử đơn tham chiếu; ẩn/khóa hoặc soft delete.
 
-### 11.2. Danh sách bảng và trường chính
+### 11.2. Model MongoDB và các thực thể nghiệp vụ
 
-Các trường dưới đây là schema logic để nhóm triển khai migration, chưa phải SQL hoàn chỉnh. `*_amount`, `*_price`, `*_fee` dùng kiểu tiền như mục 11.1; trường FK cần khai báo quan hệ thật.
+| Model Mongoose trong bản hiện tại | Dữ liệu chính |
+| --- | --- |
+| `User`, `Restaurant`, `MenuItem` | Tài khoản, chủ nhà hàng và món thuộc thực đơn của từng quán |
+| `DriverProfile` | Trạng thái duyệt, trạng thái online, điểm GPS gần nhất và thời gian nhận |
+| `Order` | Khách, nhà hàng, tài xế, danh sách món (`items`), lịch sử (`history`), đề nghị cuốc (`offers`), thanh toán và đối soát |
+| `Notification`, `Review`, `Complaint` | Thông báo, đánh giá đơn và khiếu nại |
+| `FinancialAdjustment`, `AuditLog` | Khoản điều chỉnh tài chính và lịch sử thao tác quản trị |
 
-| Bảng | Trường chính ngoài id/timestamps | Ràng buộc/trách nhiệm |
+Mỗi model có schema trong [backend/src/models](backend/src/models). Bảng tiếp theo mô tả các thực thể nghiệp vụ của thiết kế mở rộng. Một số thực thể được nhúng chung trong một document. Ví dụ, `order_items` tương ứng với mảng `Order.items`.
+
+| Thực thể trong thiết kế | Trường nghiệp vụ chính | Ràng buộc/trách nhiệm |
 | --- | --- | --- |
 | users | full_name, email, phone, password_hash, role, status | Email chuẩn hóa unique; role CUSTOMER/RESTAURANT/DRIVER/ADMIN |
 | refresh_tokens | user_id, token_hash, expires_at, revoked_at | Không lưu refresh token thô; hỗ trợ thu hồi/rotation |
@@ -481,7 +487,7 @@ Các trường dưới đây là schema logic để nhóm triển khai migration
 | outbox_events | event_id, aggregate_id, event_type, payload, status, attempts, next_retry_at | Ghi cùng transaction nghiệp vụ; worker gửi và retry; event_id unique |
 | audit_logs | actor_user_id, action, entity_type, entity_id, before_summary, after_summary, reason, request_id, occurred_at | Không ghi password/token; log thay đổi quan trọng |
 
-Chưa cần bảng GPS lịch sử dung lượng lớn, kho dữ liệu báo cáo hoặc microservice tài chính. Có thể đơn giản hóa cách triển khai bằng service dùng chung, nhưng không bỏ lịch sử tiền, chống trùng và truy vết đối soát.
+Chưa cần collection lưu toàn bộ lịch sử GPS, kho dữ liệu báo cáo hoặc microservice tài chính. Có thể đơn giản hóa cách triển khai bằng service dùng chung, nhưng không bỏ lịch sử tiền, chống trùng và truy vết đối soát.
 
 ### 11.3. Quan hệ cốt lõi
 
@@ -504,20 +510,15 @@ erDiagram
     ORDERS ||--o| ORDER_REVIEWS : receives
 ```
 
-Sơ đồ thể hiện quan hệ nghiệp vụ chính; bảng phân loại, giỏ, outbox, thông báo và đối soát đọc trong bảng schema. Các cặp quan hệ một-một phải được bảo vệ bằng unique FK, không chỉ vẽ trên sơ đồ.
+Sơ đồ thể hiện quan hệ nghiệp vụ trong thiết kế mở rộng. Trong MongoDB, đơn nhúng danh sách món, lịch sử trạng thái và đề nghị cuốc. Chỉ mục duy nhất trên `Restaurant.owner` và `DriverProfile.user` giới hạn mỗi tài khoản ở một nhà hàng và một hồ sơ tài xế.
 
 ### 11.4. Index, transaction và kiểm tra đồng thời
 
-- Index đơn theo `(customer_id, created_at)`, `(restaurant_id, order_status, created_at)`, `(order_status, completed_at)`; index assignment theo driver và trạng thái.
-- Partial unique index trên `delivery_assignments(order_id)` và `(driver_id)` khi `ended_at IS NULL`; status phải nhất quán với ended_at.
-- Partial unique index để một đơn chỉ có một offer PENDING, và một tài xế tối đa một offer PENDING. Worker chuyển offer hết hạn ra khỏi PENDING trước khi mở offer mới; kiểm tra `expires_at` tại lúc nhận.
-- Unique trên provider event/reference, khóa idempotency, mã đơn và liên kết đối soát như bảng trên.
-- CHECK cho số lượng, biên tọa độ, điểm đánh giá và số tiền không âm; riêng số dư/điều chỉnh có thể có dấu theo quy ước.
-- Redis GEO là phương án tìm gần trong MVP. Nếu triển khai PostGIS, thêm spatial index và truy vấn đúng kiểu geography/đơn vị mét; không bắt buộc làm cả hai cách ngay từ đầu.
-- Chốt cuốc và hủy/nhận đơn dùng row lock hoặc cập nhật có điều kiện `WHERE status = expected AND version = expectedVersion`, kiểm tra số dòng thực sự bị cập nhật.
-- Mọi transaction khóa nhiều đối tượng cần thứ tự ổn định, xử lý retry giới hạn khi deadlock/xung đột; không giữ transaction trong lúc chờ socket hoặc dịch vụ ngoài.
-- Tạo đơn trong một transaction gồm consume quote, tạo order/items/payment/history/outbox. Cùng quote hoặc idempotency key chỉ sinh một đơn.
-- Tiến trình xử lý outbox có thể gửi lặp sau crash; consumer chống trùng bằng event_id, không giả định “gửi đúng một lần”.
+- Chỉ mục ghép `{ customer: 1, requestKey: 1 }` là duy nhất. Khi khách gửi lại cùng yêu cầu đặt món, cơ sở dữ liệu chỉ cho tạo một đơn. Chỉ mục `{ restaurant: 1, createdAt: -1 }` phục vụ danh sách đơn của quán.
+- Chỉ mục duy nhất có điều kiện trên `Order.driver` chỉ áp dụng cho các đơn đang thực hiện. Khi hai đơn cùng được gán cho một tài xế, chỉ một lần gán có thể thành công.
+- Backend dùng `findOneAndUpdate` để kiểm tra trạng thái mong đợi ngay lúc ghi. Trạng thái, lịch sử và sự kiện chờ phát trong `Order.outbox` có thể được ghi nguyên tử trong cùng document.
+- `DriverProfile.location` có chỉ mục `2dsphere`. Truy vấn `$near` với `$maxDistance` tính bằng mét tìm ứng viên trong bán kính quanh nhà hàng.
+- Một `Review` cho mỗi đơn và một `Notification` cho mỗi cặp `(user, eventId)` được bảo vệ bằng chỉ mục duy nhất. Worker có thể đọc lại `outbox` sau khi khởi động lại.
 
 ## 12. Tiền VND, công giao và đối soát
 
@@ -673,11 +674,11 @@ Thay đổi nghiệp vụ chính thực hiện qua REST để đơn giản kiể
 
 ### 14.3. Độ tin cậy
 
-- Trong transaction cập nhật nghiệp vụ: ghi trạng thái, history, notification và outbox. Worker phát socket sau commit.
+- Khi chuyển trạng thái đơn, backend ghi trạng thái, lịch sử và sự kiện vào `Order` trong một lần cập nhật. Worker đọc `outbox`, lưu `Notification` và phát sự kiện cho người nhận.
 - Client loại trùng eventId, bỏ cập nhật đơn có version cũ; sự kiện GPS dùng sequence/receivedAt riêng, không tăng version đơn cho mọi tick.
 - Reconnect: xác thực lại, cấp lại room theo quyền hiện tại, GET lại đơn và thông báo từ REST. Không chỉ chờ sự kiện kế tiếp.
 - Fallback khi socket gián đoạn: lấy trạng thái đơn theo nhịp 3–5 giây khi trang đang mở; giảm/dừng khi trang không hoạt động. GPS vẫn có thể cũ và phải hiển thị thời gian.
-- Số liệu tiền và trạng thái cuối luôn đọc được từ PostgreSQL. Socket không phải nơi lưu trạng thái duy nhất.
+- Khi kết nối lại, client lấy trạng thái đơn và số tiền đã lưu trong MongoDB qua API.
 - Nếu chạy nhiều API instance, bổ sung cơ chế socket adapter/pub-sub và điều phối worker; không tuyên bố hỗ trợ nhiều instance khi mới chạy một máy.
 
 ## 15. Bảo mật, hiệu năng và vận hành
@@ -701,8 +702,8 @@ Thay đổi nghiệp vụ chính thực hiện qua REST để đơn giản kiể
 | NFR-2 — module hóa | Module như mục 7; service có ranh giới, controller không truy cập chéo tùy tiện; chưa cần tách microservice |
 | NFR-3 — bảo mật | Kiểm thử JWT, vai trò, ownership, socket room, tài khoản bị khóa và token bị thu hồi |
 | NFR-4 — nhất quán | Kiểm thử tạo đơn trùng, callback lặp, hai người nhận một cuốc, chốt hai kỳ; dữ liệu không trùng tiền/assignment |
-| NFR-5 — chịu lỗi | Tắt socket/Redis/worker có kiểm soát trong môi trường test; kiểm tra retry, cảnh báo, khôi phục và không mất trạng thái DB |
-| NFR-6 — truy vấn gần | Redis GEO + lọc freshness/bán kính; kiểm tra với tập vị trí giả lập và ghi độ trễ; không chạy quét toàn bộ tài xế mỗi tick |
+| NFR-5 — chịu lỗi | Ngắt WebSocket hoặc khởi động lại worker trong môi trường kiểm thử, rồi xác nhận đơn vẫn còn trong MongoDB và sự kiện chờ gửi được xử lý tiếp |
+| NFR-6 — truy vấn gần | Đo độ trễ truy vấn `$near` trên chỉ mục `2dsphere` với dữ liệu GPS giả lập. Kiểm tra giới hạn bán kính và thời điểm nhận vị trí |
 | NFR-7 — audit | Mỗi chuyển trạng thái có actor, thời gian, lý do/version; tiền/đối soát truy ra đơn và sự kiện nguồn |
 | NFR-8 — UI/UX | Kiểm tra bốn kích thước mục 10, bàn phím/focus, nhãn form, loading/empty/error và 4 vai trò |
 
@@ -710,21 +711,28 @@ Mục tiêu bổ sung đề xuất: REST đọc thông thường p95 < 1 giây v
 
 ### 15.3. Cấu hình và khởi chạy
 
-Cung cấp ít nhất `.env.example`, migration, seed và hướng dẫn chạy. Các nhóm biến môi trường:
+Backend đọc `MONGO_URI` từ `backend/.env`. Khi chạy MongoDB trên máy, có thể dùng địa chỉ sau.
+
+```dotenv
+MONGO_URI=mongodb://127.0.0.1:27017/foodgo
+```
+
+Khi dùng MongoDB Atlas, đặt `MONGO_URI` thành chuỗi kết nối của cụm và chỉ rõ tên database của nhóm. Cấu hình `JWT_SECRET` trong backend và `PORT` nếu cần đổi cổng mặc định 5000. Frontend có thể đặt `VITE_API_URL` theo [frontend/.env.example](frontend/.env.example).
+
+Các biến trong bảng dưới là đề xuất cho những chức năng mở rộng.
 
 | Nhóm | Tên biến đề xuất |
 | --- | --- |
-| Database/cache | `DATABASE_URL`, `REDIS_URL` |
 | Auth | `JWT_ACCESS_SECRET`, `JWT_REFRESH_SECRET`, thời hạn token |
 | Web/API | `WEB_ORIGIN`, `API_BASE_URL`, `NEXT_PUBLIC_API_BASE_URL` |
 | Demo | `PAYMENT_MODE=SANDBOX`, `ENABLE_GPS_SIMULATION` |
-| Điều phối | `DISPATCH_RADII_KM`, `OFFER_TIMEOUT_SECONDS`, `DISPATCH_TIMEOUT_SECONDS`, `LOCATION_TTL_SECONDS` |
+| Điều phối | `DISPATCH_RADII_KM`, `OFFER_TIMEOUT_SECONDS`, `DISPATCH_TIMEOUT_SECONDS`, `LOCATION_MAX_AGE_SECONDS` |
 | Nghiệp vụ | `PAYMENT_TIMEOUT_SECONDS`, `RESTAURANT_CONFIRM_TIMEOUT_SECONDS`, cấu hình giá có version |
 | Bản đồ | `MAP_TILE_URL`, `MAP_ATTRIBUTION` |
 
 Không đưa biến secret có tiền tố public của frontend. Cổng thanh toán và GPS mô phỏng phải có nhãn trên giao diện. Cấu hình không hợp lệ làm ứng dụng báo rõ khi khởi động.
 
-Luồng chạy local: cài dependency theo lockfile → cấu hình môi trường → bật PostgreSQL/Redis → chạy migration → seed tài khoản/demo → chạy API/worker/frontend → kiểm tra health và thực hiện một đơn đầu cuối. README chạy thực tế chỉ ghi các lệnh đã tồn tại trong repository; không ghi `npm run ...` chưa được nhóm tạo.
+Để chạy thử, khởi động MongoDB trên máy hoặc kết nối tới cụm Atlas. Chạy `npm ci` rồi `npm run dev` trong `backend` và `frontend` ở hai terminal riêng. Backend khởi tạo chỉ mục và chạy worker khi kết nối thành công. [Hướng dẫn tạo tài khoản admin và chạy thử một đơn](docs/full-workflow.md).
 
 ## 16. Phân công đề xuất cho ba thành viên
 
@@ -734,11 +742,11 @@ Phân công theo luồng nghiệp vụ, mỗi người làm cả màn hình lẫ
 | --- | --- | --- | --- |
 | Nguyễn Minh Đưc — 2506022014 | Khách hàng, đăng nhập/RBAC nền tảng, giỏ, checkout, đơn và payment giả lập | C1–C5; hồ sơ/địa chỉ; API auth/cart/quote/order/payment; state machine và test tạo/hủy/thanh toán | Nguyễn Trong Khang review đơn/tiền; Nguyễn Gia Huy review luồng gán sau xác nhận |
 | Nguyễn Trong Khang — 2513022003 | Nhà hàng, menu, admin và nghiệp vụ tài chính | R1–R6; A1–A7; duyệt/khóa; doanh thu, đối soát, khiếu nại; test COD/khóa kỳ | Nguyễn Minh Đưc review quyền và snapshot; Nguyễn Gia Huy review thu nhập/COD tài xế |
-| Nguyễn Gia Huy — 2506022010 | Tài xế, dispatch, Redis/GPS, WebSocket và tác vụ nền | D1–D6; nhận cuốc, tracking; gateway/room; outbox/timeout worker; test tranh chấp nhận cuốc/reconnect | Nguyễn Minh Đưc review trạng thái giao; Nguyễn Trong Khang review liên kết đối soát |
+| Nguyễn Gia Huy — 2506022010 | Tài xế, dispatch, truy vấn GPS trong MongoDB, WebSocket và tác vụ nền | D1–D6; nhận cuốc, tracking; gateway/room; outbox/timeout worker; test tranh chấp nhận cuốc/reconnect | Nguyễn Minh Đưc review trạng thái giao; Nguyễn Trong Khang review liên kết đối soát |
 
 Phần việc nhà hàng/admin/đối soát khá lớn. Khi phần auth/đơn và nền tảng realtime ổn định, Nguyễn Minh Đưc hỗ trợ UI admin/quyền và Nguyễn Gia Huy hỗ trợ job đối soát/báo cáo hiệu suất. Chủ module vẫn chịu trách nhiệm tích hợp cuối, tránh giao hết phần khó cho một người.
 
-Cả nhóm cùng chốt schema, enum, API và định nghĩa tiền trước khi tách nhánh. Migration được review và merge theo thứ tự; không để ba người tự thay schema không trao đổi. Tối thiểu một người khác review thay đổi liên quan tiền, quyền và state machine.
+Cả nhóm cùng chốt schema, enum, API và định nghĩa tiền trước khi tách nhánh. Nhóm review các thay đổi schema Mongoose, chỉ mục và dữ liệu cũ trước khi gộp nhánh. Tối thiểu một người khác review thay đổi liên quan tiền, quyền và state machine.
 
 ### 16.1. Quy tắc làm việc chung
 
@@ -754,7 +762,7 @@ Cả nhóm cùng chốt schema, enum, API và định nghĩa tiền trước khi
 
 | Tuần | Công việc | Điều kiện kết thúc |
 | --- | --- | --- |
-| 1 | Chốt phạm vi, wireframe, schema/API; tạo môi trường, auth/RBAC và seed | Cả nhóm chạy được web/API/DB/Redis; đăng nhập bốn vai trò; thống nhất tiền/trạng thái |
+| 1 | Chốt phạm vi, wireframe, schema/API; tạo môi trường, auth/RBAC và seed | Cả nhóm chạy được web, API và MongoDB; đăng nhập bốn vai trò; thống nhất tiền/trạng thái |
 | 2 | Khách tìm/menu/giỏ/checkout; nhà hàng menu; tài xế hồ sơ/online và GPS | Menu từ DB, giỏ thật, quote thật; vị trí và quyền hoạt động |
 | 3 | Tạo đơn COD/giả lập, xử lý nhà hàng, dispatch/nhận cuốc, lấy/giao | Một đơn đi từ tạo đến COMPLETED; có history và tiền đúng |
 | 4 | Socket/outbox/reconnect, bản đồ, hủy/hoàn, đánh giá, xử lý không có tài xế | Luồng ba vai trò cập nhật liên thông; lỗi mạng/timeout có cách xử lý |
@@ -831,11 +839,11 @@ Các phần phụ thuộc tích hợp hằng tuần. Không chờ đến tuần 
 - Token hết hạn/bị thu hồi, tài khoản khóa và tự join socket room trái quyền đều bị xử lý.
 - Kiểm tra bàn phím, focus, nhãn form, tiếng Việt, tiền VND; trang nhỏ không tràn ngang toàn trang.
 - Mỗi màn hình có loading/empty/error; API 500 không hiện “Bạn chưa có dữ liệu”.
-- Từ chối GPS, tile lỗi, Redis gián đoạn có thông báo; không sử dụng vị trí quá hạn để gán mới. Đơn đã lưu và thông tin tiền vẫn tra được từ DB.
+- Khi người dùng từ chối quyền GPS, vị trí đã cũ hoặc bản đồ tải lỗi, giao diện báo đúng tình trạng. Dữ liệu đơn và số tiền vẫn có thể tra cứu qua API.
 
 ### 19.4. Mức kiểm thử phù hợp
 
-Unit test cho công thức tiền, điều kiện chuyển trạng thái, xếp ứng viên và quyền. Integration test với PostgreSQL/Redis cho transaction, unique index, callback, gán cuốc và đối soát. E2E cho hành trình chính của bốn vai trò. Không chỉ mock ORM rồi kết luận đã bảo vệ được cạnh tranh trong database.
+Kiểm thử đơn vị bao phủ công thức tiền, điều kiện chuyển trạng thái, xếp ứng viên và quyền. Kiểm thử tích hợp với MongoDB kiểm tra cập nhật có điều kiện, chỉ mục duy nhất, callback, nhận cuốc và đối soát. Kiểm thử đầu cuối đi qua hành trình chính của cả bốn vai trò.
 
 ## 20. Dữ liệu demo và kịch bản bảo vệ
 
@@ -867,7 +875,7 @@ Tất cả thông tin là dữ liệu thử; không dùng số điện thoại/�
 | Hạng mục | Bằng chứng cần có |
 | --- | --- |
 | Mã nguồn | Frontend/API/worker; dependency lockfile; không chứa secret |
-| Database | Schema, migration, seed, ERD và cách khởi tạo lại local |
+| Cơ sở dữ liệu | Schema Mongoose, chỉ mục MongoDB, dữ liệu mẫu, sơ đồ quan hệ nghiệp vụ và hướng dẫn khởi tạo trên máy |
 | Thiết kế | Tài liệu này đã cập nhật theo quyết định thật; wireframe/màn hình bốn vai trò |
 | API/socket | OpenAPI hoặc bộ request; enum, lỗi, event và quyền room |
 | Nghiệp vụ | State machine, cấu hình giá/phí, chính sách hủy/hoàn, mô hình COD |
@@ -883,7 +891,7 @@ Thiết kế bên trên cung cấp phương án mặc định để nhóm có th
 
 | Quyết định | Mặc định trong tài liệu |
 | --- | --- |
-| Framework/frontend/backend/ORM | Next.js + NestJS + Prisma; PostgreSQL/Redis/WebSocket theo yêu cầu gốc |
+| Cơ sở dữ liệu và framework | MongoDB qua Mongoose. Bản hiện tại dùng React/Vite, Express và WebSocket. Next.js và NestJS là đề xuất ở mục 7 |
 | Mô hình đơn | Một nhà hàng/đơn; một cuốc active/tài xế |
 | Vai trò và nhà hàng | Một vai trò/tài khoản; một tài khoản vận hành/nhà hàng |
 | COD | Tài xế thu hộ khách, không ứng tiền món; đối soát với hệ thống |
@@ -901,8 +909,9 @@ Các nguồn dưới đây hỗ trợ cơ chế kỹ thuật; không phải ngu�
 
 1. [NestJS — WebSocket Gateways](https://docs.nestjs.com/websockets/gateways): cơ chế gateway và tổ chức xử lý socket.
 2. [NestJS — WebSocket Guards](https://docs.nestjs.com/websockets/guards): kiểm tra quyền ở gateway/handler; cần kết hợp ownership của đồ án.
-3. [PostgreSQL — SELECT / Locking Clause](https://www.postgresql.org/docs/current/sql-select.html): khóa dòng khi đọc để bảo vệ cập nhật cạnh tranh; SKIP LOCKED chỉ dùng đúng bối cảnh hàng đợi, không thay cho kiểm tra nghiệp vụ.
+3. Cơ chế ghi nguyên tử trong một document và kiểm tra điều kiện khi cập nhật đồng thời. [MongoDB Manual – Atomicity and Transactions](https://www.mongodb.com/docs/manual/core/write-operations-atomicity/).
 4. [MDN — Geolocation API](https://developer.mozilla.org/en-US/docs/Web/API/Geolocation_API): vị trí trình duyệt cần quyền người dùng và secure context; triển khai bằng HTTPS.
 5. [OpenStreetMap Foundation — Tile Usage Policy](https://operations.osmfoundation.org/policies/tiles/): hiển thị attribution rõ ràng, tuân thủ cache và không tải hàng loạt tile; dịch vụ cộng đồng không có bảo đảm SLA.
+6. Cách đánh chỉ mục tọa độ để tìm tài xế theo khoảng cách. [MongoDB Manual – 2dsphere Indexes](https://www.mongodb.com/docs/manual/core/indexes/index-types/geospatial/2dsphere/).
 
-Tham chiếu được tra cứu khi bổ sung tài liệu ngày 24/10/2026. Nhóm kiểm tra lại điều kiện dịch vụ và tài liệu tương ứng phiên bản thư viện trước khi triển khai.
+Các tham chiếu ban đầu được tra cứu ngày 24/10/2026. Tài liệu MongoDB được đối chiếu ngày 21/11/2026. Nhóm kiểm tra lại điều kiện dịch vụ và tài liệu tương ứng phiên bản thư viện trước khi triển khai.
