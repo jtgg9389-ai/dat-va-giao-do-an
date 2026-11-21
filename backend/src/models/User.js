@@ -1,4 +1,5 @@
 const mongoose = require('mongoose');
+const { MODES } = require('../utils/accountRoles');
 
 const userSchema = new mongoose.Schema({
   name: { type: String, required: true },
@@ -19,9 +20,11 @@ const userSchema = new mongoose.Schema({
   address: { type: String, default: '' },
   role: {
     type: String,
-    enum: ['customer', 'restaurant', 'driver', 'admin'],
+    enum: [...MODES, 'admin'],
     default: 'customer',
   },
+  roles: { type: [{ type: String, enum: MODES }], default: undefined },
+  activeRole: { type: String, enum: [...MODES, 'admin'] },
   status: { type: String, enum: ['active', 'locked'], default: 'active' },
   lockReason: { type: String, default: '' },
   lockedAt: { type: Date, default: null },

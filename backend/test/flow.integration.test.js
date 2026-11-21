@@ -41,8 +41,13 @@ test('public registration cannot create admin, missing login JSON returns valida
   assert.equal((await request('/auth/login', null, 'POST', {})).status, 400);
 });
 test('delivery pricing, payload idempotency and ownership are enforced', async () => {
-  const key = crypto.randomUUID(); let r = await request('/orders', customer, 'POST', body(), key);
+  const key = crypto.randomUUID();
+  const lookupPath = '/orders/by-request/' + key;
+  assert.equal((await request(lookupPath, customer)).data.orderId, null);
+  let r = await request('/orders', customer, 'POST', body(), key);
   assert.equal(r.status, 201); assert.equal(r.data.order.deliveryFee, 15000); assert.equal(r.data.order.totalAmount, 115000);
+  assert.equal((await request(lookupPath, customer)).data.orderId, r.data.order._id);
+  assert.equal((await request(lookupPath, outsider)).data.orderId, null);
   assert.equal((await request('/orders', customer, 'POST', body({ note: 'changed' }), key)).status, 409);
   assert.equal((await request('/orders/' + r.data.order._id, outsider)).status, 404);
   assert.equal((await request('/orders', customer, 'POST', body({ expectedSubtotal: 1 }), crypto.randomUUID())).status, 409);
@@ -71,9 +76,18 @@ test('nearest-driver offers hide contact data and acceptance prevents two active
   const first = await Order.findById(o1._id); const offeredDriver = String(first.offers.at(-1).driver) === driver.id ? driver : driver2;
   const second = await Order.findById(o2._id); assert.equal(String(second.offers.at(-1).driver), offeredDriver.id);
   const view = await request('/driver/profile', offeredDriver); assert.ok(view.data.offers.some(o => o._id === o1._id)); assert.ok(view.data.offers.every(o => !o.phone && !o.address));
+  const pickup = { name: restaurant.name, address: restaurant.address, location: gps };
+  const firstOffer = view.data.offers.find(offer => offer._id === o1._id);
+  assert.deepEqual(firstOffer.pickup, pickup);
+  assert.equal(firstOffer.restaurant, restaurant.id);
   const race = await Promise.all([request(`/driver/offers/${o1._id}`, offeredDriver, 'POST', { action: 'accept' }), request(`/driver/offers/${o2._id}`, offeredDriver, 'POST', { action: 'accept' })]);
   assert.deepEqual(race.map(r => r.status).sort(), [200,409]);
   assert.equal(await Order.countDocuments({ driver: offeredDriver._id, status: { $in: flow.ACTIVE } }), 1);
+  const acceptedId = race.find(result => result.status === 200).data.order._id;
+  const getJob = async () => (await request('/driver/profile', offeredDriver)).data.jobs.find(job => job._id === acceptedId);
+  assert.deepEqual((await getJob()).pickup, pickup);
+  await Order.updateOne({ _id: acceptedId }, { $unset: { restaurantName: 1, restaurantAddress: 1, restaurantLocation: 1 } });
+  assert.deepEqual((await getJob()).pickup, pickup);
   await Order.updateMany({ _id: { $in: [o1._id,o2._id] } }, { status: 'CANCELLED' });
 });
 test('COD delivery → review → finalization → signed transfers is repeatable and scoped', async () => {
@@ -168,7 +182,10 @@ test('first-time driver profile can be created without GPS and cannot go online 
   assert.equal((await request('/driver/availability', user, 'PUT', { online: true })).status, 200);
 });
 test('one identity switches modes while approvals and records persist; stale tokens/admin escalation are rejected', async () => {
-  const user = await User.create({ name: 'Multi role', email: 'multi@flow.test', password: 'unused', role: 'driver' });
+  const credentials = { name: 'Multi role', email: 'multi@flow.test', password: 'local-test-password', role: 'driver' };
+  const registration = await request('/auth/register', null, 'POST', credentials);
+  assert.equal(registration.status, 201);
+  const user = await User.findById(registration.data.userId);
   await Driver.create({ user: user._id, approvalStatus: 'approved', online: true, location: { type:'Point', coordinates:[106.69,10.77] }, locationAt:new Date() });
   let result = await request('/auth/switch-role', user, 'POST', { role: 'customer' }); assert.equal(result.status,200); assert.equal(result.data.user.id,user.id); assert.equal(result.data.user.role,'customer'); assert.equal(result.data.user.accountRole,'driver');
   assert.equal((await Driver.findOne({user:user._id})).approvalStatus,'approved'); assert.equal((await Driver.findOne({user:user._id})).online,false);
@@ -178,6 +195,12 @@ test('one identity switches modes while approvals and records persist; stale tok
   assert.equal((await scoped('/restaurants')).status,200); assert.equal((await scoped('/driver/profile')).status,403); assert.equal((await scoped('/admin/drivers')).status,403);
   assert.equal((await scoped('/auth/switch-role','POST',{role:'admin'})).status,400);
   result=await scoped('/auth/switch-role','POST',{role:'restaurant'});assert.equal(result.status,200);bearer=result.data.token;
+  const login = await request('/auth/login', null, 'POST', { identifier: credentials.email, password: credentials.password });
+  assert.equal(login.status, 200);
+  assert.equal(login.data.user.role, 'restaurant');
+  assert.equal(login.data.user.accountRole, 'driver');
+  assert.ok(login.data.user.roles.includes('restaurant'));
+  bearer = login.data.token;
   result=await scoped('/restaurants/mine','PUT',{name:'Quán đa vai trò',address:'123 Địa chỉ thử',location:gps});assert.equal(result.status,200);assert.equal(result.data.restaurant.approvalStatus,'pending');
   const restaurantId=result.data.restaurant._id;
   result=await scoped('/auth/switch-role','POST',{role:'driver'});assert.equal(result.status,200);bearer=result.data.token;

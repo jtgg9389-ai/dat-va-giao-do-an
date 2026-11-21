@@ -8,7 +8,7 @@ Các mục FR-1 đến FR-26 đã có luồng nghiệp vụ tương ứng bên d
 
 ## Cập nhật trên máy đang dùng
 
-Lấy đúng nhánh `codex/restaurant-api-swagger` từ GitHub. Giữ lại `.env` cũ của mình; không sao chép `.env` lên GitHub.
+Dùng cùng một nhánh cho backend và frontend. Khi chạy thử một pull request, chọn nhánh của pull request đó. Bản đã gộp nằm trên `main`. Giữ cấu hình `.env` riêng trên máy.
 
 Dừng backend/frontend cũ bằng Ctrl+C trước khi chạy bản mới:
 
@@ -29,7 +29,9 @@ npm run dev
 - `backend/.env`: cần `MONGO_URI`, `JWT_SECRET`, `PORT=5000` (hoặc cổng mong muốn). Không đổi JWT_SECRET chỉ để thử API: đổi secret sẽ làm các token đã cấp mất hiệu lực.
 - Khuyến nghị MongoDB 8 (local hoặc Atlas). Server khởi tạo index đơn/địa lý/notification/review/adjustment trước khi nghe cổng. Nếu index báo trùng tài xế active, phải kiểm tra dữ liệu cũ; không xóa index để bỏ điều kiện an toàn.
 - Backend: `http://localhost:5000`; Swagger: `/api-docs/`; JSON: `/api-docs/openapi.json`.
-- Frontend: dùng địa chỉ Vite in trong terminal, thường cổng 5173. API frontend hiện trỏ localhost:5000; sửa `frontend/src/api.js` khi triển khai cổng/host khác.
+- Mở địa chỉ frontend do Vite in ra, thường ở cổng 5173. Mặc định giao diện gọi API trên cùng tên máy với trang web, cổng 5000, đường dẫn `/api`.
+- Để mở thử từ điện thoại cùng Wi-Fi, chạy `npm run dev -- --host 0.0.0.0` trong `frontend` và mở địa chỉ **Network** mà Vite in ra. Backend trên máy đó phải truy cập được ở cổng 5000. Khi demo GPS trên điện thoại, dùng HTTPS và cho phép trình duyệt truy cập vị trí.
+- Nếu backend ở máy hoặc cổng khác, tạo `frontend/.env.local` theo `frontend/.env.example`. Ví dụ, đặt `VITE_API_URL=https://api.example.com/api` với tên miền backend của nhóm. Có thể đặt `VITE_API_URL=/api` khi web và API dùng chung tên miền qua proxy. Khởi động lại Vite hoặc build lại frontend sau khi đổi. REST, luồng sự kiện nhà hàng và WebSocket đều dùng địa chỉ này. Proxy cùng tên miền cần chuyển tiếp cả WebSocket ở `/api/ws`.
 - Worker chạy cùng backend, mỗi 2 giây; không cần chạy một terminal worker khác. Sau khi server khởi động lại, worker xử lý outbox và tác vụ còn lưu trong MongoDB.
 - Không cần Redis để chạy phiên bản hiện tại. GPS mới nhất lưu trong MongoDB với index 2dsphere; điều này chưa đáp ứng yêu cầu Redis gốc.
 
@@ -86,6 +88,7 @@ Quán cần lưu vĩ độ/kinh độ ở trang nhà hàng. Khách chọn tọa 
 - Tiền món = tổng giá × số lượng; hoa hồng demo 10% tiền món; nhà hàng hưởng tiền món − hoa hồng; tài xế hưởng phí giao.
 - Server tính và snapshot tiền; nếu `expectedSubtotal` của client không khớp giá mới thì trả 409, không tự đặt theo giá cũ.
 - Giỏ phía browser lưu theo quán và tài khoản, không phải giỏ đồng bộ đa thiết bị. Món hết hàng hoặc giá đổi phải được xác nhận lại; giá/tình trạng lúc tạo đơn do backend kiểm tra.
+- Khi gửi đơn, trang lưu mã yêu cầu và thông tin giao hàng theo giỏ. Nếu phản hồi bị mất, mở lại trang quán để tìm đơn đã tạo. Nếu yêu cầu chưa tới máy chủ, có thể gửi lại với cùng mã.
 
 ## Kịch bản demo bốn vai trò
 
@@ -94,7 +97,7 @@ Quán cần lưu vĩ độ/kinh độ ở trang nhà hàng. Khách chọn tọa 
 3. Tài xế mở `/driver` để tạo hồ sơ, bật gửi GPS; admin duyệt tài xế. Tài xế bấm Sẵn sàng nhận đơn sau khi có GPS mới.
 4. Khách chọn quán, thêm số lượng, nhập địa chỉ/điện thoại/tọa độ, xem phí và đặt COD. Với MOCK_PREPAID, mở đơn rồi bấm kết quả giả lập; chỉ sau success đơn mới chờ quán.
 5. Nhà hàng nhận thông báo, xác nhận, bắt đầu làm, sẵn sàng giao.
-6. Hệ thống đề nghị cuốc cho tài xế phù hợp. Tài xế phải nhận trước hạn 30 giây. Sau khi quán sẵn sàng: Đã lấy hàng → Bắt đầu giao.
+6. Tài xế xem tên quán, địa chỉ lấy món và mở điểm lấy trên OpenStreetMap ngay trong đề nghị cuốc. Nhận cuốc trước hạn 30 giây. Khi quán sẵn sàng, bấm **Đã lấy hàng** rồi **Bắt đầu giao**.
 7. Khách mở chi tiết đơn thấy vị trí tài xế. GPS gửi mỗi 3 giây khi tài xế giữ trang mở; cập nhật đơn/notification qua WebSocket, fallback REST 5 giây.
 8. Tài xế xác nhận giao và đủ COD. Khách đánh giá nhà hàng/tài xế; điểm quán cập nhật từ dữ liệu review.
 9. Admin xem báo cáo, chọn khoảng ngày và chốt. Worker tự chốt các ngày đã kết thúc theo giờ Việt Nam; admin có thể kích hoạt chốt sớm/ngày hiện tại cho demo.

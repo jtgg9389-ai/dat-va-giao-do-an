@@ -17,12 +17,29 @@ export function OrderDetail() {
   const state = useLiveResource(`/orders/${id}`);
   const [error, setError] = useState(''), [busy, setBusy] = useState(false);
   const [reason, setReason] = useState('');
+  const [paymentNotice, setPaymentNotice] = useState(null);
   const [rating, setRating] = useState('5'), [driverRating, setDriverRating] = useState('5'), [comment, setComment] = useState('');
-  async function action(path, body) { setBusy(true); setError(''); try { await api.post(`/orders/${id}/${path}`, body); await state.refresh(); } catch (e) { setError(e.response?.data?.message || 'Không thực hiện được'); } finally { setBusy(false); } }
+  async function action(path, body) {
+    setBusy(true);
+    setError('');
+    setPaymentNotice(null);
+    try {
+      const { data } = await api.post(`/orders/${id}/${path}`, body);
+      if (path === 'mock-payment' && data.message) {
+        setPaymentNotice({ orderId: id, text: data.message });
+      }
+      await state.refresh();
+    } catch (e) {
+      setError(e.response?.data?.message || 'Không thực hiện được');
+    } finally {
+      setBusy(false);
+    }
+  }
   const o = state.data?.order;
   return <FlowPage title="Theo dõi đơn hàng"><Link to="/orders">← Lịch sử đơn</Link><LiveState state={state} />{error && <p className="rs-error" role="alert">{error}</p>}{o && <>
     <section className="rs-card"><h2>#{o._id.slice(-8)} · {statusLabel[o.status]}</h2><p>{state.data.restaurant?.name} · {o.address}</p><p>Điện thoại nhận hàng: {o.phone}</p><ul>{o.items.map((i, n) => <li key={n}>{i.quantity} × {i.name}: {money(i.quantity * i.unitPrice)}</li>)}</ul><p>Tiền món: {money(o.subtotal)} · Phí giao: {money(o.deliveryFee)} · <strong>Tổng: {money(o.totalAmount ?? o.subtotal)}</strong></p><p>{o.paymentMethod === 'COD' ? 'Thanh toán khi nhận hàng (COD)' : 'Thanh toán giả lập'} · {o.paymentState === 'REFUNDED' ? 'Đã hoàn tiền giả lập' : o.paymentState === 'PAID' ? 'Đã ghi nhận thanh toán' : 'Chưa thanh toán'}</p>
     {o.status === 'PENDING_PAYMENT' && <div className="rs-actions"><button className="rs-btn" disabled={busy} onClick={() => action('mock-payment', { outcome: 'success' })}>Giả lập thanh toán thành công</button><button className="rs-btn secondary" disabled={busy} onClick={() => action('mock-payment', { outcome: 'fail' })}>Giả lập thất bại</button></div>}
+    {o.status === 'PENDING_PAYMENT' && paymentNotice?.orderId === id && <p className="rs-notice" role="status">{paymentNotice.text}</p>}
     {['PENDING_PAYMENT', 'PENDING_CONFIRMATION'].includes(o.status) && <form className="rs-reject" onSubmit={e => { e.preventDefault(); action('cancel', { reason }); }}><label className="rs-field">Lý do hủy<input required maxLength={500} value={reason} onChange={e => setReason(e.target.value)} /></label><button className="rs-btn secondary" disabled={busy}>Hủy đơn</button></form>}
     {o.dispatchStatus === 'NO_DRIVER' && ['CONFIRMED', 'PREPARING', 'READY_FOR_PICKUP'].includes(o.status) && <p className="rs-notice">Chưa có tài xế phù hợp; hệ thống đang tìm lại. Có thể liên hệ Hỗ trợ.</p>}
     {state.data.driver && <p>Tài xế: {state.data.driver.name} · {state.data.driver.phone}</p>}

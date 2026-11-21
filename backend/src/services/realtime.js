@@ -15,7 +15,7 @@ function attachRealtime(server) {
         const payload = jwt.verify(input.token, process.env.JWT_SECRET);
         const user = await User.findById(payload.id).select('status role roles activeRole');
         if (!user || user.status === 'locked' || !payload.exp) throw Error('Unauthorized');
-        activeRole = payload.activeRole || user.role;
+        activeRole = payload.activeRole || payload.role || user.role;
         if (!require('../utils/accountRoles').hasRole(user, activeRole) || (user.activeRole && user.activeRole !== activeRole)) throw Error('Session mode changed');
         userId = user.id; expires = payload.exp * 1000; clearTimeout(deadline);
         if (!clients.has(userId)) clients.set(userId, new Set());

@@ -7,7 +7,7 @@ Dự án hiện dùng Express/MongoDB và React/Vite. Kiến trúc PostgreSQL/Re
 1. Chạy MongoDB cục bộ (môi trường cloud đã chuẩn bị container `dat-va-giao-do-an-mongo`: `docker start dat-va-giao-do-an-mongo`).
 2. Cấu hình `backend/.env` với `MONGO_URI`, `JWT_SECRET`, `PORT=5000`. Không đưa file này lên Git.
 3. Trong `backend`: `npm ci`, sau đó `npm run dev`.
-4. Trong `frontend`: `npm ci`, sau đó `npm run dev`. API frontend hiện dùng `http://localhost:5000/api`.
+4. Trong `frontend`, chạy `npm ci` và `npm run dev`. API mặc định dùng cùng tên máy với trang web ở cổng 5000. Để đổi địa chỉ hoặc demo trên điện thoại, xem [hướng dẫn cấu hình frontend](full-workflow.md#cập-nhật-trên-máy-đang-dùng).
 5. Đăng nhập tài khoản `restaurant`, mở `/restaurant`, tạo thông tin quán và thêm món. Admin duyệt quán ở trang quản lý đối tác để khách thấy và đặt được.
 6. Khách đăng nhập, vào `/restaurants/:id`, chọn số lượng, nhập địa chỉ/điện thoại và gửi đơn COD. Mã yêu cầu chống lặp được giữ lại khi thử gửi lại cùng nội dung sau lỗi mạng.
 7. Nhà hàng đang mở `/restaurant` sẽ nhận đơn mới trực tiếp, xác nhận hoặc từ chối có lý do. Đơn được xác nhận chuyển lần lượt sang **Đang làm → Sẵn sàng giao**. Không có nút tự đánh dấu giao thành công cho nhà hàng.

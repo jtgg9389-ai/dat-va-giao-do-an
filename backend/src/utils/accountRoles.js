@@ -5,6 +5,6 @@ function rolesOf(user) {
 }
 function hasRole(user, role) { return Boolean(user) && rolesOf(user).includes(role); }
 function sessionUser(user, activeRole) {
-  return { id: user._id.toString(), name: user.name, email: user.email, role: activeRole, accountRole: user.role, roles: rolesOf(user) };
+  return { id: user._id.toString(), name: user.name, username: user.username, email: user.email, role: activeRole, accountRole: user.role, roles: rolesOf(user) };
 }
 module.exports = { MODES, rolesOf, hasRole, sessionUser };

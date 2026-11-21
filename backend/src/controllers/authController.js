@@ -5,6 +5,15 @@ const Order = require('../models/Order');
 const Driver = require('../models/DriverProfile');
 const User = require('../models/User');
 
+function createSession(user, activeRole) {
+  const token = jwt.sign(
+    { id: user._id, email: user.email, role: activeRole, activeRole },
+    process.env.JWT_SECRET,
+    { expiresIn: '7d' }
+  );
+  return { token, user: sessionUser(user, activeRole) };
+}
+
 // Kiểm tra định dạng email hợp lệ
 const isValidEmail = (email) => {
   const regex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -88,16 +97,9 @@ exports.login = async (req, res) => {
       });
     }
 
-    const token = jwt.sign(
-      { id: user._id, role: user.role, email: user.email },
-      process.env.JWT_SECRET,
-      { expiresIn: '7d' }
-    );
-
     res.json({
       message: 'Đăng nhập thành công',
-      token,
-      user: { id: user._id, name: user.name, username: user.username, email: user.email, role: user.role },
+      ...createSession(user, user.activeRole || user.role),
     });
   } catch (err) {
     console.error(err);
@@ -218,12 +220,15 @@ exports.switchRole = async (req, res) => {
     await Driver.updateOne({ user: user._id }, { $set: { online: false } });
     if (await Order.exists({ driver: user._id, status: { $in: ['CONFIRMED','PREPARING','READY_FOR_PICKUP','PICKED_UP','DELIVERING'] } })) return res.status(409).json({ message: 'Bạn đang có cuốc chưa hoàn tất. Hãy giao xong hoặc liên hệ admin trước khi chuyển chế độ.' });
   }
-  const updated = await User.findOneAndUpdate({ _id: user._id, status: { $ne: 'locked' }, role: { $ne: 'admin' }, ...(user.activeRole ? { activeRole: user.activeRole } : { activeRole: { $exists: false } }) }, { $set: { activeRole: target }, $addToSet: { roles: { $each: [...new Set([user.role, target])].filter(r => MODES.includes(r)) } } }, { new: true });
+  const updated = await User.findOneAndUpdate(
+    { _id: user._id, status: { $ne: 'locked' }, role: user.role, activeRole: user.activeRole ?? null },
+    { $set: { activeRole: target }, $addToSet: { roles: { $each: [user.role, target] } } },
+    { new: true, runValidators: true }
+  );
   if (!updated) return res.status(409).json({ message: 'Chế độ vừa thay đổi ở cửa sổ khác; hãy đăng nhập lại.' });
   if (target === 'driver') {
     try { await Driver.updateOne({ user: user._id }, req.user.role !== 'driver' ? { $set: { online: false } } : { $setOnInsert: { online: false } }, { upsert: true }); }
     catch (error) { if (error.code !== 11000) throw error; }
   }
-  const token = jwt.sign({ id: updated._id, activeRole: target, email: updated.email }, process.env.JWT_SECRET, { expiresIn: '7d' });
-  res.json({ token, user: sessionUser(updated, target), message: 'Đã chuyển chế độ tài khoản' });
+  res.json({ ...createSession(updated, target), message: 'Đã chuyển chế độ tài khoản' });
 };

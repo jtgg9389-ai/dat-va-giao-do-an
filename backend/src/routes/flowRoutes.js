@@ -6,6 +6,7 @@ const router = express.Router();
 router.use(verifyToken);
 router.param('id', (req, res, next, id) => mongoose.isValidObjectId(id) ? next() : res.status(404).json({ message: 'ID không hợp lệ' }));
 router.get('/orders', requireRole('customer'), c.myOrders);
+router.get('/orders/by-request/:requestKey', requireRole('customer'), c.orderByRequest);
 router.get('/orders/:id', c.orderDetail);
 router.post('/orders/:id/cancel', requireRole('customer'), c.cancel);
 router.post('/orders/:id/mock-payment', requireRole('customer'), c.mockPayment);

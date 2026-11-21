@@ -10,6 +10,8 @@ const orderSchema = new mongoose.Schema({
   nextDispatchAt: Date,
   deliveryLocation: { latitude: Number, longitude: Number },
   restaurantLocation: { latitude: Number, longitude: Number },
+  restaurantName: String,
+  restaurantAddress: String,
   deliveryFee: { type: Number, default: 0 },
   totalAmount: Number,
   paymentState: { type: String, enum: ['UNPAID', 'PAID', 'REFUNDED'], default: 'UNPAID' },
