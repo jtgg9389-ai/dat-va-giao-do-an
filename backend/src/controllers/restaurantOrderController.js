@@ -35,7 +35,15 @@ exports.create = async (req, res) => {
   const deliveryFee = deliveryLocation ? 15000 + Math.ceil(Math.max(0, km - 2)) * 5000 : 0;
   if (req.body.expectedSubtotal !== undefined && req.body.expectedSubtotal !== subtotal) return res.status(409).json({ message: 'Giá món đã thay đổi; tải lại thực đơn và xác nhận giá mới' });
   const status = paymentMethod === 'MOCK_PREPAID' ? 'PENDING_PAYMENT' : 'PENDING_CONFIRMATION';
-  const data = { requestHash, paymentMethod, status, deliveryLocation, restaurantLocation: restaurant.location, deliveryFee, totalAmount: subtotal + deliveryFee, outbox: [flow.outbox('Đơn mới: ' + status)], restaurant: restaurantId, customer: req.user.id, requestKey, items: snapshot, address: address.trim(), phone, note: note.trim(), subtotal, commissionAmount, restaurantNetAmount: subtotal - commissionAmount, history: [{ status, actor: req.user.id, at: new Date() }] };
+  const data = {
+    requestHash, paymentMethod, status, deliveryLocation, deliveryFee,
+    restaurant: restaurantId, restaurantLocation: restaurant.location,
+    restaurantName: restaurant.name, restaurantAddress: restaurant.address,
+    totalAmount: subtotal + deliveryFee, outbox: [flow.outbox('Đơn mới: ' + status)],
+    customer: req.user.id, requestKey, items: snapshot, address: address.trim(),
+    phone, note: note.trim(), subtotal, commissionAmount, restaurantNetAmount: subtotal - commissionAmount,
+    history: [{ status, actor: req.user.id, at: new Date() }],
+  };
   try { const order = await Order.create(data); res.status(201).json({ order }); }
   catch (err) { if (err.code !== 11000) throw err; const retry = await Order.findOne({ customer: req.user.id, requestKey }); if (retry?.requestHash !== requestHash) return res.status(409).json({ message: 'Mã yêu cầu đã dùng với nội dung khác' }); res.json({ order: retry }); }
 };

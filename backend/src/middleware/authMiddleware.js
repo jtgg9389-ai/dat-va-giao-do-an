@@ -25,7 +25,7 @@ exports.verifyToken = async (req, res, next) => {
     if (user.status === 'locked') {
       return res.status(403).json({ message: 'Tài khoản đã bị khóa', locked: true, reason: user.lockReason });
     }
-    const activeRole = decoded.activeRole || user.role;
+    const activeRole = decoded.activeRole || decoded.role || user.role;
     if (!rolesOf(user).includes(activeRole) || (user.activeRole && user.activeRole !== activeRole)) {
       return res.status(401).json({ message: 'Chế độ tài khoản đã đổi. Hãy tải lại trang hoặc đăng nhập lại.' });
     }

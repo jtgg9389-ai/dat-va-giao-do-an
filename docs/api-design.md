@@ -2,7 +2,7 @@
 
 ## Tài liệu và phiên bản
 
-- [OpenAPI hiện tại](openapi.yaml): 58 thao tác HTTP đã có route trong Express, gồm request/response, quyền và mã lỗi. Swagger tải trực tiếp từ tệp này.
+- Swagger tải mô tả request, response, quyền và mã lỗi từ [OpenAPI hiện tại](openapi.yaml).
 - [Luồng vận hành, bất biến và giới hạn](full-workflow.md): thiết kế và cách chạy toàn bộ FR-1 đến FR-26 trên MongoDB theo lựa chọn hiện tại.
 - README mục 13–14: kiến trúc đích `/api/v1`/PostgreSQL/Redis; một số tên route/envelope/loại dữ liệu khác với API `/api` hiện tại. Không xem bảng đề xuất là bằng chứng API đó đã tồn tại.
 
@@ -31,7 +31,7 @@ API hiện tại giữ đường dẫn `/api` để frontend và các tài kho�
 | Auth | POST `/auth/register`, POST `/auth/login`, GET/PUT `/auth/profile`, PUT `/auth/change-password` | Public/chủ phiên |
 | Khám phá | GET `/restaurants`, GET `/restaurants/{id}`, GET `/restaurants/{id}/reviews` | Đăng nhập |
 | Nhà hàng | GET/PUT `/restaurants/mine`, POST menu, PUT/DELETE `/restaurants/mine/menu/{itemId}` | Chủ quán |
-| Đặt món | POST `/orders` (Idempotency-Key) | Customer |
+| Đặt món | POST `/orders` (Idempotency-Key), GET `/orders/by-request/{requestKey}` để tìm lại đơn sau khi mất phản hồi | Customer, trong phạm vi tài khoản đang đăng nhập |
 | Theo dõi | GET `/orders`, GET `/orders/{id}` | Khách/chủ quán/tài xế của đơn/admin theo quyền |
 | Hủy, thanh toán, đánh giá | POST `/orders/{id}/cancel`, `/mock-payment`, `/review` | Chủ đơn |
 | Chế biến | GET `/restaurants/mine/orders`, GET stream, PATCH `/restaurants/mine/orders/{orderId}/status` | Chủ quán |

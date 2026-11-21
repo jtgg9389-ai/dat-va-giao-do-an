@@ -26,6 +26,13 @@ async function visibleOrder(req) {
 }
 function safeOrder(o) { const data = o.toObject ? o.toObject() : o; delete data.outbox; delete data.requestHash; delete data.offers; return data; }
 exports.myOrders = async (req, res) => { const orders = await Order.find({ customer: req.user.id }).sort({ createdAt: -1 }).limit(200); res.json({ orders: orders.map(safeOrder) }); };
+exports.orderByRequest = async (req, res) => {
+  const order = await Order.findOne({
+    customer: req.user.id,
+    requestKey: req.params.requestKey,
+  }).select('_id').lean();
+  res.set('Cache-Control', 'no-store').json({ orderId: order?._id ?? null });
+};
 exports.orderDetail = async (req, res) => {
   const o = await visibleOrder(req); if (!o) return fail(res, 404, 'Không tìm thấy đơn');
   const restaurant = await Restaurant.findById(o.restaurant).select('name phone address location');
@@ -70,9 +77,38 @@ exports.readNotification = async (req, res) => { const n = await Notification.fi
 exports.driverProfile = async (req, res) => {
   const profile = await Driver.findOneAndUpdate({ user: req.user.id }, { $setOnInsert: { online: false } }, { new: true, upsert: true });
   const jobs = await Order.find({ driver: req.user.id }).sort({ createdAt: -1 }).limit(100);
-  const offers = await Order.find({ driver: { $exists: false }, status: { $in: ['CONFIRMED', 'PREPARING', 'READY_FOR_PICKUP'] }, offers: { $elemMatch: { driver: req.user.id, status: 'PENDING', expiresAt: { $gt: new Date() } } } }).select('restaurant restaurantLocation deliveryLocation deliveryFee totalAmount paymentMethod offers createdAt');
-  // Offers deliberately omit customer address/phone until accepted.
-  res.json({ profile, jobs: jobs.map(safeOrder), offers: offers.map(o => ({ _id: o._id, restaurant: o.restaurant, restaurantLocation: o.restaurantLocation, deliveryFee: o.deliveryFee, paymentMethod: o.paymentMethod, expiresAt: o.offers.find(x => String(x.driver) === req.user.id && x.status === 'PENDING')?.expiresAt })) });
+  const offers = await Order.find({ driver: { $exists: false }, status: { $in: ['CONFIRMED', 'PREPARING', 'READY_FOR_PICKUP'] }, offers: { $elemMatch: { driver: req.user.id, status: 'PENDING', expiresAt: { $gt: new Date() } } } }).select('restaurant restaurantName restaurantAddress restaurantLocation deliveryFee paymentMethod offers');
+  const missingPickup = [...jobs, ...offers].filter(order =>
+    !order.restaurantName || !order.restaurantAddress || !flow.coordinates(order.restaurantLocation)
+  );
+  const restaurantIds = [...new Set(missingPickup.map(order => String(order.restaurant)))];
+  const restaurants = restaurantIds.length
+    ? await Restaurant.find({ _id: { $in: restaurantIds } }).select('name address location').lean()
+    : [];
+  const byId = new Map(restaurants.map(r => [String(r._id), r]));
+
+  function pickupFor(order) {
+    const restaurant = byId.get(String(order.restaurant));
+    return {
+      name: order.restaurantName || restaurant?.name,
+      address: order.restaurantAddress || restaurant?.address,
+      location: flow.coordinates(order.restaurantLocation) ? order.restaurantLocation : restaurant?.location,
+    };
+  }
+
+  res.json({
+    profile,
+    jobs: jobs.map(order => ({ ...safeOrder(order), pickup: pickupFor(order) })),
+    offers: offers.map(order => ({
+      _id: order._id,
+      restaurant: order.restaurant,
+      restaurantLocation: order.restaurantLocation,
+      pickup: pickupFor(order),
+      deliveryFee: order.deliveryFee,
+      paymentMethod: order.paymentMethod,
+      expiresAt: order.offers.find(offer => String(offer.driver) === req.user.id && offer.status === 'PENDING')?.expiresAt,
+    })),
+  });
 };
 exports.availability = async (req, res) => {
   if (typeof req.body?.online !== 'boolean') return fail(res, 400, 'online phải là true hoặc false');

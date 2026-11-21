@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../api';
 import './RestaurantCheckout.css';
@@ -23,18 +23,42 @@ function readUser() {
   }
 }
 
-function readCart(key) {
+function readCart(key, previousItems = []) {
   try {
     const saved = JSON.parse(localStorage.getItem(key));
 
-    return saved && typeof saved === 'object' && !Array.isArray(saved)
-      ? Object.fromEntries(
-          Object.entries(saved).map(([id, value]) => [id, clamp(value)])
-        )
-      : {};
+    if (saved && typeof saved === 'object' && !Array.isArray(saved)) {
+      return Object.fromEntries(Object.entries(saved).map(([id, value]) => [id, clamp(value)]));
+    }
   } catch {
-    return {};
+    // Còn có thể khôi phục số lượng từ yêu cầu đang chờ.
   }
+  return Object.fromEntries(previousItems.map(item => [item.menuItem, clamp(item.quantity)]));
+}
+
+const checkoutStores = ['localStorage', 'sessionStorage'];
+
+function readPending(key) {
+  for (const store of checkoutStores) {
+    try {
+      const saved = JSON.parse(window[store].getItem(key));
+      if (typeof saved?.key === 'string' && Array.isArray(saved.payload?.items)) return saved;
+    } catch {
+      // Bỏ qua kho không khả dụng.
+    }
+  }
+  return null;
+}
+
+function newRequestKey() {
+  // getRandomValues cũng dùng được khi demo qua HTTP trong mạng LAN.
+  const bytes = crypto.getRandomValues(new Uint8Array(16));
+  return Array.from(bytes, byte => byte.toString(16).padStart(2, '0')).join('');
+}
+
+async function findOrder(key) {
+  const { data } = await api.get(`/orders/by-request/${encodeURIComponent(key)}`);
+  return data.orderId;
 }
 
 function distance(a, b) {
@@ -56,28 +80,57 @@ export default function RestaurantCheckout({ restaurant, menu }) {
 
   const cartKey =
     `cart:${user.id || user._id}:${restaurant._id}`;
+  const pendingKey = cartKey + ':pending';
+  const [restored] = useState(() => readPending(pendingKey));
+  const lastPayload = restored?.payload;
 
-  const [quantities, setQuantities] = useState(() => readCart(cartKey));
+  const [quantities, setQuantities] = useState(() => readCart(cartKey, lastPayload?.items));
   const [category, setCategory] = useState('');
   const [search, setSearch] = useState('');
-  const [address, setAddress] = useState(user.address || '');
-  const [phone, setPhone] = useState(user.phone || '');
-  const [latitude, setLatitude] = useState('');
-  const [longitude, setLongitude] = useState('');
-  const [paymentMethod, setPaymentMethod] = useState('COD');
-  const [note, setNote] = useState('');
+  const [address, setAddress] = useState(lastPayload?.address ?? user.address ?? '');
+  const [phone, setPhone] = useState(lastPayload?.phone ?? user.phone ?? '');
+  const [latitude, setLatitude] = useState(String(lastPayload?.deliveryLocation?.latitude ?? ''));
+  const [longitude, setLongitude] = useState(String(lastPayload?.deliveryLocation?.longitude ?? ''));
+  const [paymentMethod, setPaymentMethod] = useState(lastPayload?.paymentMethod ?? 'COD');
+  const [note, setNote] = useState(lastPayload?.note ?? '');
   const [busy, setBusy] = useState(false);
   const [locating, setLocating] = useState(false);
   const [error, setError] = useState('');
 
-  const pending = useRef(null);
+  const pending = useRef(restored);
   const sending = useRef(false);
+
+  const openConfirmedOrder = useCallback((orderId, key) => {
+    if ((readPending(pendingKey)?.key ?? key) === key) {
+      for (const store of checkoutStores) {
+        try {
+          window[store].removeItem(pendingKey);
+          if (store === 'localStorage') window[store].removeItem(cartKey);
+        } catch {
+          // Vẫn mở đơn nếu trình duyệt chặn kho này.
+        }
+      }
+    }
+    pending.current = null;
+    navigate(`/orders/${orderId}`);
+  }, [cartKey, pendingKey, navigate]);
+
+  useEffect(() => {
+    if (!restored) return;
+    let active = true;
+    findOrder(restored.key).then(orderId => {
+      if (active && orderId) openConfirmedOrder(orderId, restored.key);
+    }).catch(() => {
+      // Khi mất mạng, lần gửi tiếp theo vẫn dùng mã của lần đặt trước.
+    });
+    return () => { active = false; };
+  }, [restored, openConfirmedOrder]);
 
   useEffect(() => {
     try {
       localStorage.setItem(cartKey, JSON.stringify(quantities));
     } catch {
-      // Vẫn cho đặt hàng khi trình duyệt không lưu được giỏ.
+      // Yêu cầu đang chờ còn lưu số lượng nếu giỏ vượt dung lượng.
     }
   }, [cartKey, quantities]);
 
@@ -191,31 +244,38 @@ export default function RestaurantCheckout({ restaurant, menu }) {
       deliveryLocation: destination,
     };
 
-    const signature = JSON.stringify(payload);
-
-    if (pending.current?.signature !== signature) {
-      pending.current = {
-        signature,
-        key: crypto.randomUUID(),
-      };
+    function reserveKey() {
+      const previous = readPending(pendingKey) || pending.current;
+      const attempt = { key: previous?.key || newRequestKey(), payload };
+      pending.current = attempt;
+      for (const store of checkoutStores) {
+        try {
+          window[store].setItem(pendingKey, JSON.stringify(attempt));
+          return attempt.key;
+        } catch {
+          // Nếu bộ nhớ chung đầy, thử lưu trong tab hiện tại.
+        }
+      }
+      return null;
     }
 
+    let key;
     try {
-      const { data } = await api.post('/orders', payload, {
-        headers: { 'Idempotency-Key': pending.current.key },
-      });
-
-      setQuantities({});
-
-      try {
-        localStorage.removeItem(cartKey);
-      } catch {
-        // Không ảnh hưởng đến đơn đã gửi thành công.
+      key = navigator.locks ? await navigator.locks.request(pendingKey, reserveKey) : reserveKey();
+      if (!key) {
+        setError('Trình duyệt chưa lưu được mã đặt món. Hãy cho phép lưu dữ liệu hoặc giải phóng bộ nhớ rồi gửi lại.');
+        return;
       }
-
-      pending.current = null;
-      navigate(`/orders/${data.order._id}`);
+      const { data } = await api.post('/orders', payload, {
+        headers: { 'Idempotency-Key': key },
+      });
+      openConfirmedOrder(data.order._id, key);
     } catch (e) {
+      if (key && e.response?.status === 409) {
+        // Giá/giỏ có thể đã đổi trong lúc phản hồi của lần gửi trước bị mất.
+        const orderId = await findOrder(key).catch(() => null);
+        if (orderId) return openConfirmedOrder(orderId, key);
+      }
       setError(
         e.response?.data?.message ||
         'Chưa xác định được kết quả gửi đơn. Thử lại với cùng thông tin để tránh tạo đơn trùng.'
@@ -351,6 +411,7 @@ export default function RestaurantCheckout({ restaurant, menu }) {
           <h2>Giỏ hàng của bạn</h2>
           <span>{count} món</span>
         </div>
+        {restored && <p className="rs-notice" role="status">Đã khôi phục lần đặt trước. Bạn có thể gửi lại với cùng mã yêu cầu.</p>}
 
         {!count && (
           <p className="order-empty">

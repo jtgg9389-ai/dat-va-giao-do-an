@@ -2050,6 +2050,32 @@ paths:
                   maxLength: 1000
               description: Cần status hoặc message không rỗng; chỉ sửa hồ sơ còn
                 OPEN/IN_REVIEW.
+  /orders/by-request/{requestKey}:
+    get:
+      summary: Tìm lại đơn của khách bằng mã yêu cầu đặt món
+      tags: [Orders]
+      operationId: getOrderByRequestKey
+      x-implementation-status: implemented
+      x-roles: [customer]
+      parameters:
+        - name: requestKey
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: ID của đơn đã tạo, hoặc null nếu khách chưa có đơn với mã này
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [orderId]
+                properties:
+                  orderId: { type: string, nullable: true }
+        "401":
+          description: Cần đăng nhập
+        "403":
+          description: Cần vai trò khách hàng
   /orders/{id}:
     get:
       summary: Chi tiết và theo dõi đơn theo quyền
@@ -2599,7 +2625,12 @@ paths:
                   jobs:
                     type: array
                     items:
-                      $ref: "#/components/schemas/Order"
+                      allOf:
+                        - $ref: "#/components/schemas/Order"
+                        - type: object
+                          properties:
+                            pickup:
+                              $ref: "#/components/schemas/PickupPoint"
                   offers:
                     type: array
                     items:
@@ -2609,6 +2640,8 @@ paths:
                         restaurant: *a11
                         restaurantLocation: &a18
                           $ref: "#/components/schemas/Location"
+                        pickup:
+                          $ref: "#/components/schemas/PickupPoint"
                         deliveryFee:
                           type: integer
                         paymentMethod:
@@ -4188,6 +4221,8 @@ components:
         driver: *a11
         deliveryLocation: *a18
         restaurantLocation: *a18
+        restaurantName: { type: string }
+        restaurantAddress: { type: string }
         deliveryFee:
           type: integer
         totalAmount:
@@ -4591,6 +4626,13 @@ components:
       required:
         - latitude
         - longitude
+    PickupPoint:
+      type: object
+      properties:
+        name: { type: string }
+        address: { type: string }
+        location:
+          $ref: "#/components/schemas/Location"
     DriverProfile:
       type: object
       properties:

@@ -1,7 +1,10 @@
 import axios from 'axios';
 
+const defaultUrl = new URL('/api', window.location.origin);
+defaultUrl.port = '5000';
+const endpoint = new URL(import.meta.env.VITE_API_URL?.trim() || defaultUrl.href, window.location.origin);
 const api = axios.create({
-  baseURL: 'http://localhost:5000/api',
+  baseURL: endpoint.href.replace(/\/+$/, ''),
 });
 
 // Tự động gắn token vào mọi request
